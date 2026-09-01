@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, LogIn, LogOut } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, Eye, EyeOff, RotateCcw, LogIn, LogOut } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
@@ -76,6 +76,15 @@ export default function App() {
 
   const [habits, setHabits] = useState<Habit[]>(createInitialHabits);
 
+  // Set default "Week Of" date to current local YYYY-MM-DD on initial mount
+  useEffect(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    setWeekOf(`${yyyy}-${mm}-${dd}`);
+  }, []);
+
   // Monitor Authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -129,17 +138,13 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    setWeekOf(`${yyyy}-${mm}-${dd}`);
-  }, []);
-
   const getDynamicDaysWithDates = () => {
     if (!weekOf) return BASE_DAYS.map((name) => ({ name, dateStr: "" }));
-    const startDate = new Date(weekOf + "T00:00:00");
+    
+    const [year, month, day] = weekOf.split("-").map(Number);
+    if (!year || !month || !day) return BASE_DAYS.map((name) => ({ name, dateStr: "" }));
+
+    const startDate = new Date(year, month - 1, day);
     const startDayIndex = startDate.getDay();
 
     return Array.from({ length: 7 }).map((_, offset) => {
@@ -282,14 +287,25 @@ export default function App() {
               {showActiveOnly ? "Show All Domains" : "Show Active Domains"}
             </button>
 
+            {/* Date Input Box */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#0f172a", padding: "8px 14px", borderRadius: "8px", border: "1px solid #334155", color: "#f8fafc", fontSize: "14px" }}>
               <CalendarIcon size={16} color="#34d399" />
               <span style={{ fontSize: "12px", color: "#94a3b8" }}>Week of:</span>
               <input 
                 type="date" 
                 value={weekOf} 
-                onChange={(e) => setWeekOf(e.target.value)} 
-                style={{ backgroundColor: "transparent", border: "none", color: "#f8fafc", fontWeight: "bold", outline: "none", cursor: "pointer" }} 
+                onChange={(e) => {
+                  if (e.target.value) setWeekOf(e.target.value);
+                }} 
+                style={{ 
+                  backgroundColor: "transparent", 
+                  border: "none", 
+                  color: "#f8fafc", 
+                  fontWeight: "bold", 
+                  outline: "none", 
+                  cursor: "pointer",
+                  colorScheme: "dark"
+                }} 
               />
             </div>
 
