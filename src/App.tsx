@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, LogIn, LogOut } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { auth, db, loginWithGoogle, logout, getRedirectResult } from "./firebase";
+import { auth, db, loginWithGoogle, logout } from "./firebase";
 
 const DEFAULT_CATEGORIES = [
   "Physical", "Spiritual", "Mental", "Romantic", "Sexual", 
@@ -76,18 +76,8 @@ export default function App() {
 
   const [habits, setHabits] = useState<Habit[]>(createInitialHabits);
 
-  // Monitor Authentication state & process redirect result
+  // Monitor Authentication state
   useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("Error processing redirect result:", error);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
@@ -99,11 +89,17 @@ export default function App() {
   useEffect(() => {
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
-      const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists() && docSnap.data().habits) {
-          setHabits(docSnap.data().habits);
+      const unsubscribeDoc = onSnapshot(
+        userDocRef, 
+        (docSnap) => {
+          if (docSnap.exists() && docSnap.data().habits) {
+            setHabits(docSnap.data().habits);
+          }
+        },
+        (error) => {
+          console.error("Firestore listener error:", error);
         }
-      });
+      );
       return () => unsubscribeDoc();
     } else {
       const saved = localStorage.getItem("tracker_habits_v12");
@@ -122,8 +118,12 @@ export default function App() {
   const saveHabits = async (newHabits: Habit[]) => {
     setHabits(newHabits);
     if (user) {
-      const userDocRef = doc(db, "users", user.uid);
-      await setDoc(userDocRef, { habits: newHabits }, { merge: true });
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, { habits: newHabits }, { merge: true });
+      } catch (error) {
+        console.error("Error saving habits to Firestore:", error);
+      }
     } else {
       localStorage.setItem("tracker_habits_v12", JSON.stringify(newHabits));
     }
