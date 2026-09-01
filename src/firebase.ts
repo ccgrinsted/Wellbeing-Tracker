@@ -3,6 +3,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithRedirect, 
+  getRedirectResult,
   signOut 
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -21,5 +22,14 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 
-export const loginWithGoogle = () => signInWithRedirect(auth, googleProvider);
+export const loginWithGoogle = async () => {
+  try {
+    await signInWithRedirect(auth, googleProvider);
+  } catch (error) {
+    console.error("Error initiating redirect sign-in:", error);
+    alert(`Sign-in failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
+};
+
 export const logout = () => signOut(auth);
+export { getRedirectResult };

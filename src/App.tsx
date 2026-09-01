@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, LogIn, LogOut } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import { auth, db, loginWithGoogle, logout } from "./firebase";
+import { auth, db, loginWithGoogle, logout, getRedirectResult } from "./firebase";
 
 const DEFAULT_CATEGORIES = [
   "Physical", "Spiritual", "Mental", "Romantic", "Sexual", 
@@ -11,8 +11,17 @@ const DEFAULT_CATEGORIES = [
 
 const BASE_DAYS = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
 
-function AutoResizingTextarea({ value, onChange, placeholder }) {
-  const textareaRef = useRef(null);
+interface Habit {
+  id: number;
+  category: string;
+  description: string;
+  targetDays: number | null;
+  days: boolean[];
+  isCustom: boolean;
+}
+
+function AutoResizingTextarea({ value, onChange, placeholder }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; placeholder: string }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -48,15 +57,14 @@ function AutoResizingTextarea({ value, onChange, placeholder }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [weekOf, setWeekOf] = useState("");
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
-  const printRef = useRef(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const createInitialHabits = () =>
+  const createInitialHabits = (): Habit[] =>
     DEFAULT_CATEGORIES.map((category, index) => ({
       id: index + 1,
       category,
@@ -66,13 +74,24 @@ export default function App() {
       isCustom: false,
     }));
 
-  const [habits, setHabits] = useState(createInitialHabits);
+  const [habits, setHabits] = useState<Habit[]>(createInitialHabits);
 
-  // Monitor Authentication state
+  // Monitor Authentication state & process redirect result
   useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        console.error("Error processing redirect result:", error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -100,7 +119,7 @@ export default function App() {
   }, [user]);
 
   // Save changes to Firestore or localStorage
-  const saveHabits = async (newHabits) => {
+  const saveHabits = async (newHabits: Habit[]) => {
     setHabits(newHabits);
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
@@ -136,18 +155,18 @@ export default function App() {
 
   const activeDaysWithDates = getDynamicDaysWithDates();
 
-  const handleDescriptionChange = (id, text) => {
+  const handleDescriptionChange = (id: number, text: string) => {
     const updated = habits.map((h) => (h.id === id ? { ...h, description: text } : h));
     saveHabits(updated);
   };
 
-  const handleTargetChange = (id, value) => {
-    const targetDays = value === "" ? null : parseInt(value);
+  const handleTargetChange = (id: number, value: string) => {
+    const targetDays = value === "" ? null : parseInt(value, 10);
     const updated = habits.map((h) => (h.id === id ? { ...h, targetDays } : h));
     saveHabits(updated);
   };
 
-  const toggleDay = (id, dayIndex) => {
+  const toggleDay = (id: number, dayIndex: number) => {
     const updated = habits.map((h) => {
       if (h.id === id) {
         const newDays = [...h.days];
@@ -162,7 +181,7 @@ export default function App() {
   const addCustomCategory = () => {
     const title = prompt("Enter new custom domain name:");
     if (title && title.trim() !== "") {
-      const updated = [
+      const updated: Habit[] = [
         ...habits,
         {
           id: Date.now(),
@@ -177,7 +196,7 @@ export default function App() {
     }
   };
 
-  const removeCustomDomain = (id, categoryName) => {
+  const removeCustomDomain = (id: number, categoryName: string) => {
     if (confirm(`Are you sure you want to delete "${categoryName}"?`)) {
       const updated = habits.filter((h) => h.id !== id);
       saveHabits(updated);
@@ -199,7 +218,7 @@ export default function App() {
     saveHabits(updated);
   };
 
-  const generatePDFAndReset = async (shouldDownload) => {
+  const generatePDFAndReset = async (shouldDownload: boolean) => {
     setShowResetModal(false);
 
     if (shouldDownload) {
@@ -212,8 +231,8 @@ export default function App() {
         jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
       };
 
-      if (window.html2pdf) {
-        await window.html2pdf().set(opt).from(element).save();
+      if ((window as any).html2pdf) {
+        await (window as any).html2pdf().set(opt).from(element).save();
       } else {
         window.print();
       }
@@ -244,7 +263,7 @@ export default function App() {
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
               {user ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <img src={user.photoURL} alt={user.displayName} style={{ width: "32px", height: "32px", borderRadius: "50%" }} />
+                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || "User"} style={{ width: "32px", height: "32px", borderRadius: "50%" }} />}
                   <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#334155", color: "#f8fafc", border: "none", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
                     <LogOut size={14} /> Sign Out
                   </button>
@@ -263,11 +282,16 @@ export default function App() {
               {showActiveOnly ? "Show All Domains" : "Show Active Domains"}
             </button>
 
-            <button onClick={() => setIsCalendarOpen(true)} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#0f172a", padding: "8px 14px", borderRadius: "8px", border: "1px solid #334155", color: "#f8fafc", cursor: "pointer", fontSize: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#0f172a", padding: "8px 14px", borderRadius: "8px", border: "1px solid #334155", color: "#f8fafc", fontSize: "14px" }}>
               <CalendarIcon size={16} color="#34d399" />
               <span style={{ fontSize: "12px", color: "#94a3b8" }}>Week of:</span>
-              <span style={{ fontWeight: "bold" }}>{weekOf || "Select Date"}</span>
-            </button>
+              <input 
+                type="date" 
+                value={weekOf} 
+                onChange={(e) => setWeekOf(e.target.value)} 
+                style={{ backgroundColor: "transparent", border: "none", color: "#f8fafc", fontWeight: "bold", outline: "none", cursor: "pointer" }} 
+              />
+            </div>
 
             <button onClick={() => setShowResetModal(true)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "#334155", color: "#f8fafc", border: "none", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
               <RefreshCw size={14} /> Reset Week
