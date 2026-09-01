@@ -9,12 +9,12 @@ import {
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBD5EbgQqBhVBGN6QTL5kZGsw3Y7MHoWp4",
+  authDomain: "wellbeing-tracker-ce9cf.firebaseapp.com",
+  projectId: "wellbeing-tracker-ce9cf",
+  storageBucket: "wellbeing-tracker-ce9cf.firebasestorage.app",
+  messagingSenderId: "555034597658",
+  appId: "1:555034597658:web:ee177bd89c92db2f6334a3",
 };
 
 const app = initializeApp(firebaseConfig);
