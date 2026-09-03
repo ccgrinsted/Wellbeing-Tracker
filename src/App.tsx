@@ -330,7 +330,7 @@ export default function App() {
           </div>
           <div style={{ backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155" }}>
             <div style={{ fontSize: "12px", color: "#94a3b8" }}>Total Days Completed</div>
-            <div style={{ fontSize: "24px", fontWeight: "bold", color="#34d399" }}>
+            <div style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399" }}>
               {totalCompleted}{" "}
               <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: "normal" }}>/ {totalTargetSum} Target Days</span>
             </div>
