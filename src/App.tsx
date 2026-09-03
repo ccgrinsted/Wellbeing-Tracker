@@ -230,7 +230,7 @@ export default function App() {
       const element = printRef.current;
       const opt = {
         margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
+        filename: `Wellbeing_Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
@@ -263,7 +263,7 @@ export default function App() {
           <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
             <div style={{ flex: 1 }} />
             <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399", margin: 0, flex: 2, textAlign: "center" }}>
-              Accountability Tracker
+              Wellbeing Accountability Tracker
             </h1>
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
               {user ? (
@@ -330,7 +330,7 @@ export default function App() {
           </div>
           <div style={{ backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155" }}>
             <div style={{ fontSize: "12px", color: "#94a3b8" }}>Total Days Completed</div>
-            <div style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399" }}>
+            <div style={{ fontSize: "24px", fontWeight: "bold", color="#34d399" }}>
               {totalCompleted}{" "}
               <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: "normal" }}>/ {totalTargetSum} Target Days</span>
             </div>
