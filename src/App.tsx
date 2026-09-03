@@ -72,7 +72,10 @@ export default function App() {
     return localStorage.getItem("tracker_weekOf_v1") || getTodayString();
   });
 
-  const [showActiveOnly, setShowActiveOnly] = useState(false);
+  const [showActiveOnly, setShowActiveOnly] = useState<boolean>(() => {
+    return localStorage.getItem("tracker_showActiveOnly_v1") === "true";
+  });
+
   const [showResetModal, setShowResetModal] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -109,6 +112,7 @@ export default function App() {
             const data = docSnap.data();
             if (data.habits) setHabits(data.habits);
             if (data.weekOf) setWeekOf(data.weekOf);
+            if (data.showActiveOnly !== undefined) setShowActiveOnly(data.showActiveOnly);
           }
         },
         (error) => {
@@ -129,6 +133,10 @@ export default function App() {
       const savedDate = localStorage.getItem("tracker_weekOf_v1");
       if (savedDate) {
         setWeekOf(savedDate);
+      }
+      const savedActiveOnly = localStorage.getItem("tracker_showActiveOnly_v1");
+      if (savedActiveOnly !== null) {
+        setShowActiveOnly(savedActiveOnly === "true");
       }
     }
   }, [user]);
@@ -159,6 +167,22 @@ export default function App() {
         await setDoc(userDocRef, { weekOf: newDate }, { merge: true });
       } catch (error) {
         console.error("Error saving weekOf date to Firestore:", error);
+      }
+    }
+  };
+
+  // Save showActiveOnly toggle changes to Firestore and localStorage
+  const handleShowActiveOnlyToggle = async () => {
+    const newValue = !showActiveOnly;
+    setShowActiveOnly(newValue);
+    localStorage.setItem("tracker_showActiveOnly_v1", String(newValue));
+
+    if (user) {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, { showActiveOnly: newValue }, { merge: true });
+      } catch (error) {
+        console.error("Error saving showActiveOnly to Firestore:", error);
       }
     }
   };
@@ -307,7 +331,7 @@ export default function App() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", flexWrap: "wrap", width: "100%" }}>
-            <button onClick={() => setShowActiveOnly(!showActiveOnly)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "600", backgroundColor: showActiveOnly ? "#10b981" : "#334155", color: showActiveOnly ? "#020617" : "#f8fafc", border: "none", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
+            <button onClick={handleShowActiveOnlyToggle} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "600", backgroundColor: showActiveOnly ? "#10b981" : "#334155", color: showActiveOnly ? "#020617" : "#f8fafc", border: "none", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
               {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />}
               {showActiveOnly ? "Show All Domains" : "Show Active Domains"}
             </button>
