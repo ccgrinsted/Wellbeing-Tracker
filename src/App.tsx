@@ -58,7 +58,20 @@ function AutoResizingTextarea({ value, onChange, placeholder }: { value: string;
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
-  const [weekOf, setWeekOf] = useState("");
+  
+  // Helper to retrieve today's date formatted YYYY-MM-DD
+  const getTodayString = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const [weekOf, setWeekOf] = useState<string>(() => {
+    return localStorage.getItem("tracker_weekOf_v1") || getTodayString();
+  });
+
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
 
@@ -76,15 +89,6 @@ export default function App() {
 
   const [habits, setHabits] = useState<Habit[]>(createInitialHabits);
 
-  // Set default "Week Of" date to current local YYYY-MM-DD on initial mount
-  useEffect(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    setWeekOf(`${yyyy}-${mm}-${dd}`);
-  }, []);
-
   // Monitor Authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -101,8 +105,10 @@ export default function App() {
       const unsubscribeDoc = onSnapshot(
         userDocRef, 
         (docSnap) => {
-          if (docSnap.exists() && docSnap.data().habits) {
-            setHabits(docSnap.data().habits);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.habits) setHabits(data.habits);
+            if (data.weekOf) setWeekOf(data.weekOf);
           }
         },
         (error) => {
@@ -111,19 +117,23 @@ export default function App() {
       );
       return () => unsubscribeDoc();
     } else {
-      const saved = localStorage.getItem("tracker_habits_v12");
-      if (saved) {
+      const savedHabits = localStorage.getItem("tracker_habits_v12");
+      if (savedHabits) {
         try {
-          const parsed = JSON.parse(saved);
+          const parsed = JSON.parse(savedHabits);
           if (Array.isArray(parsed) && parsed.length > 0) setHabits(parsed);
         } catch (e) {
           console.error("Failed to parse local habits", e);
         }
       }
+      const savedDate = localStorage.getItem("tracker_weekOf_v1");
+      if (savedDate) {
+        setWeekOf(savedDate);
+      }
     }
   }, [user]);
 
-  // Save changes to Firestore or localStorage
+  // Save habits changes to Firestore or localStorage
   const saveHabits = async (newHabits: Habit[]) => {
     setHabits(newHabits);
     if (user) {
@@ -135,6 +145,21 @@ export default function App() {
       }
     } else {
       localStorage.setItem("tracker_habits_v12", JSON.stringify(newHabits));
+    }
+  };
+
+  // Save weekOf date changes to Firestore and localStorage
+  const handleWeekOfChange = async (newDate: string) => {
+    setWeekOf(newDate);
+    localStorage.setItem("tracker_weekOf_v1", newDate);
+
+    if (user) {
+      try {
+        const userDocRef = doc(db, "users", user.uid);
+        await setDoc(userDocRef, { weekOf: newDate }, { merge: true });
+      } catch (error) {
+        console.error("Error saving weekOf date to Firestore:", error);
+      }
     }
   };
 
@@ -295,7 +320,7 @@ export default function App() {
                 type="date" 
                 value={weekOf} 
                 onChange={(e) => {
-                  if (e.target.value) setWeekOf(e.target.value);
+                  if (e.target.value) handleWeekOfChange(e.target.value);
                 }} 
                 style={{ 
                   backgroundColor: "transparent", 
