@@ -109,3 +109,19 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Ensure the html, body, and root containers fill the screen and match the brand background */
+html, 
+body, 
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #0d1412 !important;
+}
+
+/* Strip default margins from embedded elements */
+* {
+  box-sizing: border-box;
+}
