@@ -299,9 +299,18 @@ export default function App() {
     ? habits.filter((h) => h.targetDays !== null && h.targetDays > 0)
     : habits;
 
+  // Uncapped total for raw stats display
   const totalCompleted = habits.reduce((acc, h) => acc + h.days.filter(Boolean).length, 0);
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
-  const overallPercentage = totalTargetSum > 0 ? Math.round((totalCompleted / totalTargetSum) * 100) : 0;
+
+  // Overall Goal Progress capped so bonus days don't push completion past target
+  const totalCappedProgress = habits.reduce((acc, h) => {
+    if (!h.targetDays || h.targetDays === 0) return acc;
+    const completed = h.days.filter(Boolean).length;
+    return acc + Math.min(completed, h.targetDays);
+  }, 0);
+
+  const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedProgress / totalTargetSum) * 100) : 0;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#0f172a", color: "#f8fafc", padding: "24px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -411,7 +420,9 @@ export default function App() {
             <tbody>
               {displayedHabits.map((item) => {
                 const completedDays = item.days.filter(Boolean).length;
-                const percentage = item.targetDays && item.targetDays > 0 ? Math.round((completedDays / item.targetDays) * 100) : 0;
+                const percentage = item.targetDays && item.targetDays > 0 
+                  ? Math.min(100, Math.round((completedDays / item.targetDays) * 100)) 
+                  : 0;
 
                 return (
                   <tr key={item.id} style={{ borderBottom: "1px solid #334155" }}>
