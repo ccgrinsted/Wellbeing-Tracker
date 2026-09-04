@@ -302,16 +302,16 @@ export default function App() {
     ? habits.filter((h) => h.targetDays !== null && h.targetDays > 0)
     : habits;
 
-  const totalCompleted = habits.reduce((acc, h) => acc + h.days.filter(Boolean).length, 0);
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
 
-  const totalCappedProgress = habits.reduce((acc, h) => {
-    if (!h.targetDays || h.targetDays === 0) return acc;
+  // Capped completion sum: caps each domain's completed days at its designated target
+  const totalCappedCompleted = habits.reduce((acc, h) => {
     const completed = h.days.filter(Boolean).length;
+    if (!h.targetDays || h.targetDays === 0) return acc;
     return acc + Math.min(completed, h.targetDays);
   }, 0);
 
-  const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedProgress / totalTargetSum) * 100) : 0;
+  const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedCompleted / totalTargetSum) * 100) : 0;
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: BRAND.bg, color: BRAND.text, padding: "24px", fontFamily: "'Montserrat', sans-serif" }}>
@@ -396,7 +396,7 @@ export default function App() {
           <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
             <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Total Days Completed</div>
             <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", color: BRAND.primary, marginTop: "4px" }}>
-              {totalCompleted}{" "}
+              {totalCappedCompleted}{" "}
               <span style={{ fontSize: "14px", color: BRAND.textMuted, fontFamily: "'Montserrat', sans-serif", fontWeight: "normal" }}>/ {totalTargetSum} Target Days</span>
             </div>
           </div>
