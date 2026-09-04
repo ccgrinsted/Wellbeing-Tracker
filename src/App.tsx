@@ -4,6 +4,18 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
 
+// Brand Design Tokens
+const BRAND = {
+  bg: "#0d1412",          // Deep Forest / Charcoal (Primary BG)
+  cardBg: "#15201d",      // Slightly lighter forest container background
+  border: "#283833",      // Subtle muted dark green-gray border
+  primary: "#8a9a86",     // Sage Green (Primary Brand)
+  accent: "#d4af37",      // Signature Gold (Accent)
+  text: "#f4f1ea",        // Cream / Off-White (Typography)
+  textMuted: "#a3b0a0",   // Soft muted sage for labels/subtitles
+  inputBg: "rgba(13, 20, 18, 0.7)",
+};
+
 const DEFAULT_CATEGORIES = [
   "Physical", "Spiritual", "Mental", "Romantic", "Sexual", 
   "Social", "Family", "Financial", "Professional", "Creativity", "Community"
@@ -39,17 +51,18 @@ function AutoResizingTextarea({ value, onChange, placeholder }: { value: string;
       onChange={onChange}
       style={{
         width: "100%",
-        backgroundColor: "rgba(15, 23, 42, 0.6)",
-        border: "1px solid #334155",
+        backgroundColor: BRAND.inputBg,
+        border: `1px solid ${BRAND.border}`,
         borderRadius: "6px",
         padding: "8px 12px",
-        color: "#f8fafc",
+        color: BRAND.text,
         outline: "none",
         resize: "none",
         whiteSpace: "pre-wrap",
         lineHeight: "1.5",
         overflow: "hidden",
         fontSize: "14px",
+        fontFamily: "'Montserrat', sans-serif",
         boxSizing: "border-box",
       }}
     />
@@ -59,7 +72,6 @@ function AutoResizingTextarea({ value, onChange, placeholder }: { value: string;
 export default function App() {
   const [user, setUser] = useState<any>(null);
   
-  // Helper to retrieve today's date formatted YYYY-MM-DD
   const getTodayString = () => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -92,16 +104,13 @@ export default function App() {
 
   const [habits, setHabits] = useState<Habit[]>(createInitialHabits);
 
-  // Monitor Authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Sync data with Firestore if logged in; fall back to localStorage if logged out
   useEffect(() => {
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
@@ -131,17 +140,13 @@ export default function App() {
         }
       }
       const savedDate = localStorage.getItem("tracker_weekOf_v1");
-      if (savedDate) {
-        setWeekOf(savedDate);
-      }
+      if (savedDate) setWeekOf(savedDate);
+      
       const savedActiveOnly = localStorage.getItem("tracker_showActiveOnly_v1");
-      if (savedActiveOnly !== null) {
-        setShowActiveOnly(savedActiveOnly === "true");
-      }
+      if (savedActiveOnly !== null) setShowActiveOnly(savedActiveOnly === "true");
     }
   }, [user]);
 
-  // Save habits changes to Firestore or localStorage
   const saveHabits = async (newHabits: Habit[]) => {
     setHabits(newHabits);
     if (user) {
@@ -156,7 +161,6 @@ export default function App() {
     }
   };
 
-  // Save weekOf date changes to Firestore and localStorage
   const handleWeekOfChange = async (newDate: string) => {
     setWeekOf(newDate);
     localStorage.setItem("tracker_weekOf_v1", newDate);
@@ -171,7 +175,6 @@ export default function App() {
     }
   };
 
-  // Save showActiveOnly toggle changes to Firestore and localStorage
   const handleShowActiveOnlyToggle = async () => {
     const newValue = !showActiveOnly;
     setShowActiveOnly(newValue);
@@ -279,7 +282,7 @@ export default function App() {
       const element = printRef.current;
       const opt = {
         margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `Wellbeing_Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
+        filename: `Wellspring_Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
@@ -299,11 +302,9 @@ export default function App() {
     ? habits.filter((h) => h.targetDays !== null && h.targetDays > 0)
     : habits;
 
-  // Uncapped total for raw stats display
   const totalCompleted = habits.reduce((acc, h) => acc + h.days.filter(Boolean).length, 0);
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
 
-  // Overall Goal Progress capped so bonus days don't push completion past target
   const totalCappedProgress = habits.reduce((acc, h) => {
     if (!h.targetDays || h.targetDays === 0) return acc;
     const completed = h.days.filter(Boolean).length;
@@ -313,26 +314,31 @@ export default function App() {
   const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedProgress / totalTargetSum) * 100) : 0;
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0f172a", color: "#f8fafc", padding: "24px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: BRAND.bg, color: BRAND.text, padding: "24px", fontFamily: "'Montserrat', sans-serif" }}>
+      {/* Font imports */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+      `}</style>
+
       <div style={{ maxWidth: "1200px", margin: "0 auto" }} ref={printRef}>
         
         {/* Header */}
-        <header style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", backgroundColor: "#1e293b", padding: "24px", borderRadius: "12px", border: "1px solid #334155", marginBottom: "24px", textAlign: "center" }}>
+        <header style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "16px", backgroundColor: BRAND.cardBg, padding: "28px 24px", borderRadius: "12px", border: `1px solid ${BRAND.border}`, marginBottom: "24px", textAlign: "center" }}>
           <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
             <div style={{ flex: 1 }} />
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399", margin: 0, flex: 2, textAlign: "center" }}>
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "28px", fontWeight: "600", color: BRAND.text, margin: 0, flex: 2, textAlign: "center", letterSpacing: "0.5px" }}>
               Wellbeing Accountability Tracker
             </h1>
             <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
               {user ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || "User"} style={{ width: "32px", height: "32px", borderRadius: "50%" }} />}
-                  <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#334155", color: "#f8fafc", border: "none", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
+                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || "User"} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `1px solid ${BRAND.accent}` }} />}
+                  <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.bg, color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontFamily: "'Montserrat', sans-serif" }}>
                     <LogOut size={14} /> Sign Out
                   </button>
                 </div>
               ) : (
-                <button onClick={loginWithGoogle} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#10b981", color: "#020617", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "12px" }}>
+                <button onClick={loginWithGoogle} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.primary, color: BRAND.bg, border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "12px", fontFamily: "'Montserrat', sans-serif" }}>
                   <LogIn size={14} /> Sign in with Google
                 </button>
               )}
@@ -340,15 +346,15 @@ export default function App() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", flexWrap: "wrap", width: "100%" }}>
-            <button onClick={handleShowActiveOnlyToggle} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "600", backgroundColor: showActiveOnly ? "#10b981" : "#334155", color: showActiveOnly ? "#020617" : "#f8fafc", border: "none", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
+            <button onClick={handleShowActiveOnlyToggle} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: "600", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${showActiveOnly ? BRAND.primary : BRAND.border}`, padding: "10px 14px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>
               {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />}
               {showActiveOnly ? "Show All Domains" : "Show Active Domains"}
             </button>
 
             {/* Date Input Box */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#0f172a", padding: "8px 14px", borderRadius: "8px", border: "1px solid #334155", color: "#f8fafc", fontSize: "14px" }}>
-              <CalendarIcon size={16} color="#34d399" />
-              <span style={{ fontSize: "12px", color: "#94a3b8" }}>Week of:</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: BRAND.bg, padding: "8px 14px", borderRadius: "8px", border: `1px solid ${BRAND.border}`, color: BRAND.text, fontSize: "14px" }}>
+              <CalendarIcon size={16} color={BRAND.accent} />
+              <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Week of:</span>
               <input 
                 type="date" 
                 value={weekOf} 
@@ -358,20 +364,21 @@ export default function App() {
                 style={{ 
                   backgroundColor: "transparent", 
                   border: "none", 
-                  color: "#f8fafc", 
+                  color: BRAND.text, 
                   fontWeight: "bold", 
                   outline: "none", 
                   cursor: "pointer",
-                  colorScheme: "dark"
+                  colorScheme: "dark",
+                  fontFamily: "'Montserrat', sans-serif"
                 }} 
               />
             </div>
 
-            <button onClick={() => setShowResetModal(true)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "#334155", color: "#f8fafc", border: "none", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
-              <RefreshCw size={14} /> Reset Week
+            <button onClick={() => setShowResetModal(true)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: BRAND.bg, color: BRAND.text, border: `1px solid ${BRAND.border}`, padding: "10px 14px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>
+              <RefreshCw size={14} color={BRAND.primary} /> Reset Week
             </button>
 
-            <button onClick={restoreDefaultDomains} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "#0f172a", color: "#94a3b8", border: "1px solid #334155", padding: "10px 14px", borderRadius: "8px", cursor: "pointer" }}>
+            <button onClick={restoreDefaultDomains} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "10px 14px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>
               <RotateCcw size={14} /> Restore Defaults
             </button>
           </div>
@@ -379,38 +386,38 @@ export default function App() {
 
         {/* Dashboard Cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-          <div style={{ backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155" }}>
-            <div style={{ fontSize: "12px", color: "#94a3b8" }}>Active / Total Domains</div>
-            <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+          <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
+            <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Active / Total Domains</div>
+            <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", marginTop: "4px" }}>
               {habits.filter((h) => h.targetDays !== null && h.targetDays > 0).length}{" "}
-              <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: "normal" }}>/ {habits.length} Total</span>
+              <span style={{ fontSize: "14px", color: BRAND.textMuted, fontFamily: "'Montserrat', sans-serif", fontWeight: "normal" }}>/ {habits.length} Total</span>
             </div>
           </div>
-          <div style={{ backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155" }}>
-            <div style={{ fontSize: "12px", color: "#94a3b8" }}>Total Days Completed</div>
-            <div style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399" }}>
+          <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
+            <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Total Days Completed</div>
+            <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", color: BRAND.primary, marginTop: "4px" }}>
               {totalCompleted}{" "}
-              <span style={{ fontSize: "14px", color: "#94a3b8", fontWeight: "normal" }}>/ {totalTargetSum} Target Days</span>
+              <span style={{ fontSize: "14px", color: BRAND.textMuted, fontFamily: "'Montserrat', sans-serif", fontWeight: "normal" }}>/ {totalTargetSum} Target Days</span>
             </div>
           </div>
-          <div style={{ backgroundColor: "#1e293b", padding: "16px", borderRadius: "12px", border: "1px solid #334155" }}>
-            <div style={{ fontSize: "12px", color: "#94a3b8" }}>Overall Goal Progress</div>
-            <div style={{ fontSize: "24px", fontWeight: "bold", color: "#34d399" }}>{overallPercentage}%</div>
+          <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
+            <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Overall Goal Progress</div>
+            <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", color: BRAND.accent, marginTop: "4px" }}>{overallPercentage}%</div>
           </div>
         </div>
 
         {/* Table */}
-        <div style={{ overflowX: "auto", backgroundColor: "#1e293b", borderRadius: "12px", border: "1px solid #334155" }}>
+        <div style={{ overflowX: "auto", backgroundColor: BRAND.cardBg, borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "1000px" }}>
             <thead>
-              <tr style={{ backgroundColor: "rgba(15, 23, 42, 0.5)", borderBottom: "1px solid #334155", fontSize: "12px", color: "#94a3b8" }}>
-                <th style={{ padding: "16px", width: "140px" }}>Wellbeing Domain</th>
+              <tr style={{ backgroundColor: BRAND.bg, borderBottom: `1px solid ${BRAND.border}`, fontSize: "12px", color: BRAND.textMuted }}>
+                <th style={{ padding: "16px", width: "140px", fontFamily: "'Playfair Display', serif", fontSize: "14px", color: BRAND.text }}>Wellbeing Domain</th>
                 <th style={{ padding: "16px", width: "380px" }}>Habit / Practice Description</th>
                 <th style={{ padding: "16px", width: "130px", textAlign: "center" }}>Target (Days/Wk)</th>
                 {activeDaysWithDates.map((item, i) => (
                   <th key={i} style={{ padding: "12px 6px", textAlign: "center", width: "60px" }}>
                     <div>{item.name}</div>
-                    {item.dateStr && <div style={{ fontSize: "11px", color: "#34d399", marginTop: "2px" }}>{item.dateStr}</div>}
+                    {item.dateStr && <div style={{ fontSize: "11px", color: BRAND.accent, marginTop: "2px" }}>{item.dateStr}</div>}
                   </th>
                 ))}
                 <th style={{ padding: "16px", textAlign: "center", width: "120px" }}>Actual Results</th>
@@ -425,10 +432,10 @@ export default function App() {
                   : 0;
 
                 return (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #334155" }}>
-                    <td style={{ padding: "16px", fontWeight: "500", verticalAlign: "top", paddingTop: "20px" }}>
+                  <tr key={item.id} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
+                    <td style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "16px", fontWeight: "500", verticalAlign: "top", paddingTop: "20px", color: BRAND.text }}>
                       {item.category}
-                      {item.isCustom && <span style={{ fontSize: "10px", color: "#34d399", display: "block", marginTop: "2px" }}>(Custom)</span>}
+                      {item.isCustom && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "10px", color: BRAND.primary, display: "block", marginTop: "2px" }}>(Custom)</span>}
                     </td>
                     <td style={{ padding: "16px", verticalAlign: "top" }}>
                       <AutoResizingTextarea
@@ -441,7 +448,7 @@ export default function App() {
                       <select
                         value={item.targetDays === null ? "" : item.targetDays}
                         onChange={(e) => handleTargetChange(item.id, e.target.value)}
-                        style={{ backgroundColor: "rgba(15, 23, 42, 0.6)", border: "1px solid #334155", borderRadius: "6px", padding: "8px", color: "#f8fafc", width: "100%", outline: "none" }}
+                        style={{ backgroundColor: BRAND.inputBg, border: `1px solid ${BRAND.border}`, borderRadius: "6px", padding: "8px", color: BRAND.text, width: "100%", outline: "none", fontFamily: "'Montserrat', sans-serif" }}
                       >
                         <option value="">-- Select --</option>
                         {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -453,25 +460,38 @@ export default function App() {
                       <td key={index} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px" }}>
                         <button
                           onClick={() => toggleDay(item.id, index)}
-                          style={{ width: "42px", height: "42px", borderRadius: "8px", border: checked ? "1px solid #10b981" : "1px solid #475569", backgroundColor: checked ? "#10b981" : "rgba(15, 23, 42, 0.8)", color: checked ? "#020617" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}
+                          style={{ 
+                            width: "42px", 
+                            height: "42px", 
+                            borderRadius: "8px", 
+                            border: checked ? `1px solid ${BRAND.accent}` : `1px solid ${BRAND.border}`, 
+                            backgroundColor: checked ? BRAND.primary : BRAND.inputBg, 
+                            color: checked ? BRAND.bg : "transparent", 
+                            cursor: "pointer", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            justifyContent: "center", 
+                            margin: "0 auto",
+                            transition: "all 0.15s ease-in-out"
+                          }}
                         >
-                          <Check size={20} strokeWidth={3} />
+                          <Check size={20} strokeWidth={3} color={checked ? BRAND.bg : "transparent"} />
                         </button>
                       </td>
                     ))}
                     <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold", verticalAlign: "top", paddingTop: "20px" }}>
                       {item.targetDays ? (
                         <>
-                          <div style={{ color: completedDays > 0 ? "#34d399" : "#64748b" }}>{completedDays}/{item.targetDays} Days</div>
-                          <div style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "normal" }}>{percentage}%</div>
+                          <div style={{ color: completedDays > 0 ? BRAND.accent : BRAND.textMuted }}>{completedDays}/{item.targetDays} Days</div>
+                          <div style={{ fontSize: "12px", color: BRAND.textMuted, fontWeight: "normal" }}>{percentage}%</div>
                         </>
                       ) : (
-                        <div style={{ color: "#64748b", fontSize: "12px", fontWeight: "normal" }}>Set Target First</div>
+                        <div style={{ color: BRAND.textMuted, fontSize: "12px", fontWeight: "normal" }}>Set Target First</div>
                       )}
                     </td>
                     <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
                       {item.isCustom && (
-                        <button onClick={() => removeCustomDomain(item.id, item.category)} style={{ backgroundColor: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}>
+                        <button onClick={() => removeCustomDomain(item.id, item.category)} style={{ backgroundColor: "transparent", border: "none", color: "#e57373", cursor: "pointer" }}>
                           <Trash2 size={16} />
                         </button>
                       )}
@@ -484,7 +504,7 @@ export default function App() {
         </div>
 
         <div style={{ marginTop: "16px" }}>
-          <button onClick={addCustomCategory} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#10b981", color: "#020617", fontWeight: "600", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px" }}>
+          <button onClick={addCustomCategory} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "600", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontFamily: "'Montserrat', sans-serif" }}>
             <Plus size={16} /> Add Custom Domain
           </button>
         </div>
@@ -492,14 +512,14 @@ export default function App() {
 
       {/* Reset Modal Popup */}
       {showResetModal && (
-        <div onClick={() => setShowResetModal(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "24px", width: "400px", maxWidth: "90%", color: "#f8fafc" }}>
-            <h3 style={{ margin: "0 0 12px 0", fontSize: "18px", color: "#34d399" }}>Reset Weekly Progress</h3>
-            <p style={{ fontSize: "14px", color: "#94a3b8", lineHeight: "1.5", margin: "0 0 20px 0" }}>Would you like to download a PDF summary of this week's results before resetting?</p>
+        <div onClick={() => setShowResetModal(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13, 20, 18, 0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: BRAND.cardBg, border: `1px solid ${BRAND.border}`, borderRadius: "12px", padding: "28px", width: "400px", maxWidth: "90%", color: BRAND.text }}>
+            <h3 style={{ margin: "0 0 12px 0", fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent }}>Reset Weekly Progress</h3>
+            <p style={{ fontSize: "14px", color: BRAND.textMuted, lineHeight: "1.5", margin: "0 0 20px 0" }}>Would you like to download a PDF summary of this week's results before resetting?</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <button onClick={() => generatePDFAndReset(true)} style={{ backgroundColor: "#10b981", color: "#020617", fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>Yes, Download PDF & Reset Form</button>
-              <button onClick={() => generatePDFAndReset(false)} style={{ backgroundColor: "#ef4444", color: "#ffffff", fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>No, Just Reset Form</button>
-              <button onClick={() => setShowResetModal(false)} style={{ backgroundColor: "transparent", color: "#94a3b8", border: "1px solid #334155", padding: "10px", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => generatePDFAndReset(true)} style={{ backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>Yes, Download PDF & Reset Form</button>
+              <button onClick={() => generatePDFAndReset(false)} style={{ backgroundColor: BRAND.bg, color: "#e57373", border: `1px solid ${BRAND.border}`, fontWeight: "bold", padding: "12px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>No, Just Reset Form</button>
+              <button onClick={() => setShowResetModal(false)} style={{ backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "10px", borderRadius: "8px", cursor: "pointer", fontFamily: "'Montserrat', sans-serif" }}>Cancel</button>
             </div>
           </div>
         </div>
