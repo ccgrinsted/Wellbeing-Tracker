@@ -36,6 +36,8 @@ const DEFAULT_CATEGORIES = [
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+type TrendRange = "month" | "quarter" | "ytd" | "year";
+
 interface WeekHabitDetails {
   description: string;
   targetDays: number | null;
@@ -116,6 +118,7 @@ function AutoResizingTextarea({ value, onChange, placeholder }: { value: string;
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"tracker" | "trends" | "history">("tracker");
+  const [trendRange, setTrendRange] = useState<TrendRange>("quarter");
   
   const [startDayIndex, setStartDayIndex] = useState<number | null>(() => {
     const saved = localStorage.getItem("tracker_startDayIndex_v2");
@@ -137,6 +140,7 @@ export default function App() {
   const [selectedHistoryReport, setSelectedHistoryReport] = useState<WeeklyReport | null>(null);
 
   const reportPrintRef = useRef<HTMLDivElement>(null);
+  const trendPrintRef = useRef<HTMLDivElement>(null);
 
   const createInitialHabits = (): Habit[] =>
     DEFAULT_CATEGORIES.map((category, index) => ({
@@ -188,7 +192,7 @@ export default function App() {
     }
   }, [user]);
 
-  // Inherit practices/targets from the most recent prior week if current target week has no entries
+  // Inherit practices and targets from the most recent prior week
   useEffect(() => {
     if (!habits.length) return;
 
@@ -342,6 +346,27 @@ export default function App() {
 
   const computedReports = getComputedReports();
 
+  const getFilteredTrendReports = (): WeeklyReport[] => {
+    const reports = [...computedReports];
+    const currentYear = new Date().getFullYear();
+
+    if (trendRange === "month") {
+      return reports.slice(0, 4);
+    } else if (trendRange === "quarter") {
+      return reports.slice(0, 12);
+    } else if (trendRange === "ytd") {
+      return reports.filter((r) => {
+        const rYear = Number(r.weekStartDate.split("-")[0]);
+        return rYear === currentYear;
+      });
+    } else if (trendRange === "year") {
+      return reports.slice(0, 52);
+    }
+    return reports;
+  };
+
+  const trendReports = getFilteredTrendReports();
+
   const handleDateChange = (dateStr: string) => {
     setSelectedDate(dateStr);
   };
@@ -410,6 +435,26 @@ export default function App() {
     const opt = {
       margin: [0.3, 0.3, 0.3, 0.3],
       filename: `Wellspring_Report_Week_${selectedHistoryReport.weekStartDate}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: BRAND.cardBg },
+      jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
+    };
+
+    try {
+      const html2pdfModule = (await import("html2pdf.js")).default;
+      await html2pdfModule().set(opt).from(element).save();
+    } catch (err) {
+      console.error("PDF generation error, opening browser print dialog:", err);
+      window.print();
+    }
+  };
+
+  const downloadTrendPDF = async () => {
+    if (!trendPrintRef.current) return;
+    const element = trendPrintRef.current;
+    const opt = {
+      margin: [0.3, 0.3, 0.3, 0.3],
+      filename: `Wellspring_Trend_Analytics_${trendRange.toUpperCase()}.pdf`,
       image: { type: "jpeg", quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: BRAND.cardBg },
       jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
@@ -503,10 +548,30 @@ export default function App() {
         
         {/* Header Navigation */}
         <header style={{ display: "flex", flexDirection: "column", gap: "16px", backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}`, marginBottom: "24px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "26px", margin: 0, color: BRAND.text }}>Wellbeing Accountability Tracker</h1>
+          
+          {/* Header Bar with Logo Left, Title Center, Widgets Right */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "16px" }}>
             
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {/* Left: Logomark Hyperlink */}
+            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
+              <a href="https://www.wellspring.coach" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block" }}>
+                <img 
+                  src="/WellSpring Logo Horizontal - Color Light Knockout.png" 
+                  alt="Wellspring Logo" 
+                  style={{ height: "42px", width: "auto", display: "block" }} 
+                />
+              </a>
+            </div>
+
+            {/* Center: Title */}
+            <div style={{ textAlign: "center" }}>
+              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "22px", margin: 0, color: BRAND.text, whiteSpace: "nowrap" }}>
+                Wellbeing Accountability Tracker
+              </h1>
+            </div>
+
+            {/* Right: Settings & Auth */}
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
               <button onClick={() => { setTempStartDay(activeStartDay); setShowSettingsModal(true); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "50%", backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.textMuted, cursor: "pointer" }} title="Settings">
                 <Settings size={18} />
               </button>
@@ -681,13 +746,68 @@ export default function App() {
         {/* TAB 2: TREND ANALYTICS */}
         {activeTab === "trends" && (
           <div style={{ backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent, marginTop: 0 }}>Progress Trends Over Time</h2>
-            {computedReports.length === 0 ? (
-              <p style={{ color: BRAND.textMuted }}>No completed past weeks recorded yet.</p>
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent, margin: 0 }}>Progress Trends Over Time</h2>
+              
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "4px", backgroundColor: BRAND.bg, padding: "4px", borderRadius: "8px", border: `1px solid ${BRAND.border}` }}>
+                  {(["month", "quarter", "ytd", "year"] as TrendRange[]).map((range) => {
+                    const labels: Record<TrendRange, string> = {
+                      month: "Last Month",
+                      quarter: "Last Quarter",
+                      ytd: "Year to Date",
+                      year: "Last Year",
+                    };
+                    const isActive = trendRange === range;
+                    return (
+                      <button
+                        key={range}
+                        onClick={() => setTrendRange(range)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          border: "none",
+                          backgroundColor: isActive ? BRAND.primary : "transparent",
+                          color: isActive ? BRAND.bg : BRAND.textMuted,
+                          fontSize: "12px",
+                          fontWeight: isActive ? "bold" : "normal",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {labels[range]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={downloadTrendPDF}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    backgroundColor: BRAND.primary,
+                    color: BRAND.bg,
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  <FileDown size={14} /> Download Chart PDF
+                </button>
+              </div>
+            </div>
+
+            {trendReports.length === 0 ? (
+              <p style={{ color: BRAND.textMuted }}>No completed past weeks recorded for this timeframe yet.</p>
             ) : (
-              <div style={{ width: "100%", height: 380, marginTop: "20px" }}>
+              <div ref={trendPrintRef} style={{ width: "100%", height: 400, paddingTop: "10px" }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={[...computedReports].reverse()}>
+                  <ComposedChart data={[...trendReports].reverse()}>
                     <CartesianGrid strokeDasharray="3 3" stroke={BRAND.border} />
                     <XAxis dataKey="weekStartDate" stroke={BRAND.textMuted} />
                     <YAxis yAxisId="left" orientation="left" stroke={BRAND.primary} />
