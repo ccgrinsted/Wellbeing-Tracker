@@ -41,7 +41,7 @@ interface Habit {
   category: string;
   description: string;
   targetDays: number | null;
-  days: boolean[];
+  completedDates: Record<string, boolean>;
   isCustom: boolean;
 }
 
@@ -54,6 +54,25 @@ interface WeeklyReport {
   overallPercentage: number;
   createdAt: string;
 }
+
+const formatDateToISO = (date: Date): string => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const calculateWeekStartDate = (targetDateStr: string, startDayIndex: number): string => {
+  const [year, month, day] = targetDateStr.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const currentDayOfWeek = date.getDay();
+  
+  let diff = currentDayOfWeek - startDayIndex;
+  if (diff < 0) diff += 7;
+  
+  date.setDate(date.getDate() - diff);
+  return formatDateToISO(date);
+};
 
 function AutoResizingTextarea({ value, onChange, placeholder }: { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; placeholder: string }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -99,31 +118,17 @@ export default function App() {
     return Number(localStorage.getItem("tracker_startDayIndex")) || 0;
   });
 
-  const getTodayString = () => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
-  const [weekOf, setWeekOf] = useState<string>(() => {
-    return localStorage.getItem("tracker_weekOf_v1") || getTodayString();
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return localStorage.getItem("tracker_selectedDate_v1") || formatDateToISO(new Date());
   });
 
-  // Sticky User Preference
+  const weekOf = calculateWeekStartDate(selectedDate, startDayIndex);
+
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(() => {
     return localStorage.getItem("tracker_showActiveOnly_v1") === "true";
   });
 
   const [showResetModal, setShowResetModal] = useState(false);
-
-  const [reports, setReports] = useState<WeeklyReport[]>(() => {
-    const saved = localStorage.getItem("tracker_reports_v1");
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [pendingReport, setPendingReport] = useState<WeeklyReport | null>(null);
   const [selectedHistoryReport, setSelectedHistoryReport] = useState<WeeklyReport | null>(null);
 
   const printRef = useRef<HTMLDivElement>(null);
@@ -135,7 +140,7 @@ export default function App() {
       category,
       description: "",
       targetDays: null,
-      days: [false, false, false, false, false, false, false],
+      completedDates: {},
       isCustom: false,
     }));
 
@@ -148,7 +153,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sync state with LocalStorage/Firestore across devices
   useEffect(() => {
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
@@ -156,18 +160,17 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data.habits) setHabits(data.habits);
-          if (data.weekOf) setWeekOf(data.weekOf);
+          if (data.selectedDate) setSelectedDate(data.selectedDate);
           if (data.showActiveOnly !== undefined) {
             setShowActiveOnly(data.showActiveOnly);
             localStorage.setItem("tracker_showActiveOnly_v1", String(data.showActiveOnly));
           }
           if (data.startDayIndex !== undefined) setStartDayIndex(data.startDayIndex);
-          if (data.reports) setReports(data.reports);
         }
       });
       return () => unsubscribeDoc();
     } else {
-      const savedHabits = localStorage.getItem("tracker_habits_v12");
+      const savedHabits = localStorage.getItem("tracker_habits_v14");
       if (savedHabits) {
         try {
           const parsed = JSON.parse(savedHabits);
@@ -179,21 +182,17 @@ export default function App() {
     }
   }, [user]);
 
-  // Centralized State Persister
   const saveState = async (
     newHabits: Habit[],
-    newWeekOf?: string,
-    newReports?: WeeklyReport[],
+    newDate?: string,
     newStartDay?: number,
     newActiveOnly?: boolean
   ) => {
-    const updatedWeek = newWeekOf !== undefined ? newWeekOf : weekOf;
-    const updatedReports = newReports !== undefined ? newReports : reports;
+    const updatedDate = newDate !== undefined ? newDate : selectedDate;
     const updatedStartDay = newStartDay !== undefined ? newStartDay : startDayIndex;
     const updatedActiveOnly = newActiveOnly !== undefined ? newActiveOnly : showActiveOnly;
 
     setHabits(newHabits);
-    setReports(updatedReports);
 
     if (user) {
       try {
@@ -202,8 +201,7 @@ export default function App() {
           userDocRef,
           {
             habits: newHabits,
-            weekOf: updatedWeek,
-            reports: updatedReports,
+            selectedDate: updatedDate,
             startDayIndex: updatedStartDay,
             showActiveOnly: updatedActiveOnly,
           },
@@ -213,46 +211,112 @@ export default function App() {
         console.error("Firestore sync error:", err);
       }
     } else {
-      localStorage.setItem("tracker_habits_v12", JSON.stringify(newHabits));
-      localStorage.setItem("tracker_weekOf_v1", updatedWeek);
-      localStorage.setItem("tracker_reports_v1", JSON.stringify(updatedReports));
+      localStorage.setItem("tracker_habits_v14", JSON.stringify(newHabits));
+      localStorage.setItem("tracker_selectedDate_v1", updatedDate);
       localStorage.setItem("tracker_startDayIndex", String(updatedStartDay));
       localStorage.setItem("tracker_showActiveOnly_v1", String(updatedActiveOnly));
     }
   };
 
-  const handleStartDayChange = (index: number) => {
-    setStartDayIndex(index);
-    saveState(habits, weekOf, reports, index, showActiveOnly);
-  };
-
-  // Toggle button exclusively controls the preference
-  const toggleShowActiveOnly = () => {
-    const newValue = !showActiveOnly;
-    setShowActiveOnly(newValue);
-    localStorage.setItem("tracker_showActiveOnly_v1", String(newValue));
-    saveState(habits, weekOf, reports, startDayIndex, newValue);
-  };
-
   const getDynamicDaysWithDates = () => {
-    if (!weekOf) return SHORT_DAYS.map((name) => ({ name, dateStr: "" }));
     const [year, month, day] = weekOf.split("-").map(Number);
-    if (!year || !month || !day) return SHORT_DAYS.map((name) => ({ name, dateStr: "" }));
-
     const startDate = new Date(year, month - 1, day);
 
     return Array.from({ length: 7 }).map((_, offset) => {
       const current = new Date(startDate);
       current.setDate(startDate.getDate() + offset);
-      const dayName = SHORT_DAYS[(startDayIndex + offset) % 7];
+      const isoDateStr = formatDateToISO(current);
+      const dayName = SHORT_DAYS[current.getDay()];
       return {
         name: dayName,
         dateStr: `${current.getMonth() + 1}/${current.getDate()}`,
+        isoDateStr,
       };
     });
   };
 
   const activeDaysWithDates = getDynamicDaysWithDates();
+  const currentWeekDateStrings = activeDaysWithDates.map((d) => d.isoDateStr);
+
+  // Dynamically compute weekly reports for any week that has checkmarks or active targets
+  const getComputedReports = (): WeeklyReport[] => {
+    const weekMap: Record<string, { habitMap: Record<number, Habit>; totalTargetSum: number; totalCappedCompleted: number }> = {};
+
+    // Collect all active week start dates stored in the system
+    const allDates = new Set<string>();
+    habits.forEach((h) => {
+      Object.keys(h.completedDates || {}).forEach((d) => allDates.add(d));
+    });
+    
+    // Always include current active week
+    allDates.add(weekOf);
+
+    allDates.forEach((dateStr) => {
+      const wStart = calculateWeekStartDate(dateStr, startDayIndex);
+      if (!weekMap[wStart]) {
+        const wDays = Array.from({ length: 7 }).map((_, idx) => {
+          const [y, m, d] = wStart.split("-").map(Number);
+          const dt = new Date(y, m - 1, d + idx);
+          return formatDateToISO(dt);
+        });
+
+        let totalTarget = 0;
+        let totalCompleted = 0;
+
+        const snapshotHabits = habits.map((h) => {
+          const completedInThisWeek = wDays.filter((d) => h.completedDates?.[d]).length;
+          if (h.targetDays) {
+            totalTarget += h.targetDays;
+            totalCompleted += Math.min(completedInThisWeek, h.targetDays);
+          }
+          return h;
+        });
+
+        const overallPercentage = totalTarget > 0 ? Math.round((totalCompleted / totalTarget) * 100) : 0;
+
+        weekMap[wStart] = {
+          habitMap: {},
+          totalTargetSum: totalTarget,
+          totalCappedCompleted: totalCompleted,
+        };
+      }
+    });
+
+    return Object.keys(weekMap)
+      .sort((a, b) => b.localeCompare(a))
+      .map((wStart) => {
+        const data = weekMap[wStart];
+        const overallPercentage = data.totalTargetSum > 0 ? Math.round((data.totalCappedCompleted / data.totalTargetSum) * 100) : 0;
+        return {
+          id: wStart,
+          weekStartDate: wStart,
+          habitsSnapshot: habits,
+          totalTargetSum: data.totalTargetSum,
+          totalCappedCompleted: data.totalCappedCompleted,
+          overallPercentage,
+          createdAt: wStart,
+        };
+      });
+  };
+
+  const computedReports = getComputedReports();
+
+  const handleStartDayChange = (index: number) => {
+    setStartDayIndex(index);
+    saveState(habits, selectedDate, index, showActiveOnly);
+  };
+
+  const handleDateChange = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    saveState(habits, dateStr, startDayIndex, showActiveOnly);
+  };
+
+  const toggleShowActiveOnly = () => {
+    const newValue = !showActiveOnly;
+    setShowActiveOnly(newValue);
+    localStorage.setItem("tracker_showActiveOnly_v1", String(newValue));
+    saveState(habits, selectedDate, startDayIndex, newValue);
+  };
 
   const handleDescriptionChange = (id: number, text: string) => {
     const updated = habits.map((h) => (h.id === id ? { ...h, description: text } : h));
@@ -265,23 +329,28 @@ export default function App() {
     saveState(updated);
   };
 
-  const toggleDay = (id: number, dayIndex: number) => {
+  const toggleDayByDate = (id: number, isoDateStr: string) => {
     const updated = habits.map((h) => {
       if (h.id === id) {
-        const newDays = [...h.days];
-        newDays[dayIndex] = !newDays[dayIndex];
-        return { ...h, days: newDays };
+        const newCompleted = { ...(h.completedDates || {}) };
+        if (newCompleted[isoDateStr]) {
+          delete newCompleted[isoDateStr];
+        } else {
+          newCompleted[isoDateStr] = true;
+        }
+        return { ...h, completedDates: newCompleted };
       }
       return h;
     });
     saveState(updated);
   };
 
-  const clearFormCheckmarks = () => {
-    const updated = habits.map((h) => ({
-      ...h,
-      days: [false, false, false, false, false, false, false],
-    }));
+  const clearWeekCheckmarks = () => {
+    const updated = habits.map((h) => {
+      const updatedDates = { ...(h.completedDates || {}) };
+      currentWeekDateStrings.forEach((dateStr) => delete updatedDates[dateStr]);
+      return { ...h, completedDates: updatedDates };
+    });
     saveState(updated);
   };
 
@@ -307,65 +376,7 @@ export default function App() {
       }
     }
 
-    clearFormCheckmarks();
-  };
-
-  const finalizeReportAndStartNewWeek = async (downloadPdf: boolean) => {
-    if (!pendingReport) return;
-
-    if (downloadPdf && reportPrintRef.current) {
-      const element = reportPrintRef.current;
-      const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3],
-        filename: `Wellspring_Report_${pendingReport.weekStartDate}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, backgroundColor: BRAND.bg },
-        jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
-      };
-      try {
-        const html2pdfModule = (await import("html2pdf.js")).default;
-        await html2pdfModule().set(opt).from(element).save();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    const updatedReports = [pendingReport, ...reports.filter((r) => r.id !== pendingReport.id)];
-
-    const [year, month, day] = weekOf.split("-").map(Number);
-    const nextWeekDate = new Date(year, month - 1, day + 7);
-    const yyyy = nextWeekDate.getFullYear();
-    const mm = String(nextWeekDate.getMonth() + 1).padStart(2, "0");
-    const dd = String(nextWeekDate.getDate()).padStart(2, "0");
-    const newWeekStr = `${yyyy}-${mm}-${dd}`;
-
-    const resetHabits = habits.map((h) => ({
-      ...h,
-      days: [false, false, false, false, false, false, false],
-    }));
-
-    setWeekOf(newWeekStr);
-    setPendingReport(null);
-    saveState(resetHabits, newWeekStr, updatedReports);
-  };
-
-  const downloadReportPdf = async (report: WeeklyReport) => {
-    if (!reportPrintRef.current) return;
-    const opt = {
-      margin: [0.3, 0.3, 0.3, 0.3],
-      filename: `Wellspring_Report_${report.weekStartDate}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, backgroundColor: BRAND.bg },
-      jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
-    };
-
-    try {
-      const html2pdfModule = (await import("html2pdf.js")).default;
-      await html2pdfModule().set(opt).from(reportPrintRef.current).save();
-    } catch (err) {
-      console.error("Error downloading PDF report:", err);
-      window.print();
-    }
+    clearWeekCheckmarks();
   };
 
   const addCustomCategory = () => {
@@ -378,7 +389,7 @@ export default function App() {
           category: title.trim(),
           description: "",
           targetDays: null,
-          days: [false, false, false, false, false, false, false],
+          completedDates: {},
           isCustom: true,
         },
       ];
@@ -400,21 +411,20 @@ export default function App() {
     }
   };
 
-  // Filter displaying habits cleanly based on explicitly set user options
   const displayedHabits = showActiveOnly
     ? habits.filter(
         (h) =>
           (h.targetDays !== null && h.targetDays > 0) ||
           h.description.trim().length > 0 ||
-          h.days.some(Boolean)
+          currentWeekDateStrings.some((d) => h.completedDates?.[d])
       )
     : habits;
 
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
   const totalCappedCompleted = habits.reduce((acc, h) => {
-    const completed = h.days.filter(Boolean).length;
+    const completedInWeek = currentWeekDateStrings.filter((d) => h.completedDates?.[d]).length;
     if (!h.targetDays || h.targetDays === 0) return acc;
-    return acc + Math.min(completed, h.targetDays);
+    return acc + Math.min(completedInWeek, h.targetDays);
   }, 0);
   const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedCompleted / totalTargetSum) * 100) : 0;
 
@@ -458,7 +468,7 @@ export default function App() {
               <BarChart2 size={16} /> Trend Analytics
             </button>
             <button onClick={() => setActiveTab("history")} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === "history" ? BRAND.primary : "transparent", color: activeTab === "history" ? BRAND.bg : BRAND.text, fontWeight: "600", cursor: "pointer" }}>
-              <History size={16} /> Weekly History ({reports.length})
+              <History size={16} /> Weekly History ({computedReports.length})
             </button>
           </div>
 
@@ -476,8 +486,8 @@ export default function App() {
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Week of:</span>
-                <input type="date" value={weekOf} onChange={(e) => e.target.value && setWeekOf(e.target.value)} style={{ backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.text, padding: "6px 10px", borderRadius: "6px", outline: "none", fontSize: "12px" }} />
+                <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Select Date:</span>
+                <input type="date" value={selectedDate} onChange={(e) => e.target.value && handleDateChange(e.target.value)} style={{ backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.text, padding: "6px 10px", borderRadius: "6px", outline: "none", fontSize: "12px" }} />
                 <button onClick={toggleShowActiveOnly} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
                   {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />} {showActiveOnly ? "Show All" : "Active Only"}
                 </button>
@@ -499,7 +509,7 @@ export default function App() {
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
                 <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Active / Total Domains</div>
                 <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", marginTop: "4px" }}>
-                  {habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0 || h.days.some(Boolean)).length} / {habits.length}
+                  {habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0 || currentWeekDateStrings.some((d) => h.completedDates?.[d])).length} / {habits.length}
                 </div>
               </div>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
@@ -521,8 +531,8 @@ export default function App() {
                     <th style={{ padding: "16px", width: "160px", fontFamily: "'Playfair Display', serif", fontSize: "14px", color: BRAND.text }}>Domain</th>
                     <th style={{ padding: "16px", width: "360px" }}>Practice / Habit</th>
                     <th style={{ padding: "16px", width: "130px", textAlign: "center" }}>Target</th>
-                    {activeDaysWithDates.map((item, i) => (
-                      <th key={i} style={{ padding: "12px 6px", textAlign: "center", width: "60px" }}>
+                    {activeDaysWithDates.map((item) => (
+                      <th key={item.isoDateStr} style={{ padding: "12px 6px", textAlign: "center", width: "60px" }}>
                         <div>{item.name}</div>
                         {item.dateStr && <div style={{ fontSize: "11px", color: BRAND.accent }}>{item.dateStr}</div>}
                       </th>
@@ -533,8 +543,8 @@ export default function App() {
                 </thead>
                 <tbody>
                   {displayedHabits.map((item) => {
-                    const completedDays = item.days.filter(Boolean).length;
-                    const percentage = item.targetDays && item.targetDays > 0 ? Math.min(100, Math.round((completedDays / item.targetDays) * 100)) : 0;
+                    const completedDaysCount = currentWeekDateStrings.filter((d) => item.completedDates?.[d]).length;
+                    const percentage = item.targetDays && item.targetDays > 0 ? Math.min(100, Math.round((completedDaysCount / item.targetDays) * 100)) : 0;
                     return (
                       <tr key={item.id} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
                         <td style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "15px", verticalAlign: "top", paddingTop: "20px" }}>
@@ -552,17 +562,20 @@ export default function App() {
                             ))}
                           </select>
                         </td>
-                        {item.days.map((checked, index) => (
-                          <td key={index} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px" }}>
-                            <button onClick={() => toggleDay(item.id, index)} style={{ width: "40px", height: "40px", borderRadius: "8px", border: checked ? `1px solid ${BRAND.accent}` : `1px solid ${BRAND.border}`, backgroundColor: checked ? BRAND.primary : BRAND.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
-                              <Check size={18} color={checked ? BRAND.bg : "transparent"} strokeWidth={3} />
-                            </button>
-                          </td>
-                        ))}
+                        {activeDaysWithDates.map((dayInfo) => {
+                          const isChecked = !!item.completedDates?.[dayInfo.isoDateStr];
+                          return (
+                            <td key={dayInfo.isoDateStr} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px" }}>
+                              <button onClick={() => toggleDayByDate(item.id, dayInfo.isoDateStr)} style={{ width: "40px", height: "40px", borderRadius: "8px", border: isChecked ? `1px solid ${BRAND.accent}` : `1px solid ${BRAND.border}`, backgroundColor: isChecked ? BRAND.primary : BRAND.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
+                                <Check size={18} color={isChecked ? BRAND.bg : "transparent"} strokeWidth={3} />
+                              </button>
+                            </td>
+                          );
+                        })}
                         <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold", verticalAlign: "top", paddingTop: "20px" }}>
                           {item.targetDays ? (
                             <div>
-                              <span style={{ color: BRAND.accent }}>{completedDays}/{item.targetDays}</span>
+                              <span style={{ color: BRAND.accent }}>{completedDaysCount}/{item.targetDays}</span>
                               <div style={{ fontSize: "11px", color: BRAND.textMuted }}>{percentage}%</div>
                             </div>
                           ) : <span style={{ fontSize: "12px", color: BRAND.textMuted }}>-</span>}
@@ -593,12 +606,12 @@ export default function App() {
         {activeTab === "trends" && (
           <div style={{ backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent, marginTop: 0 }}>Progress Trends Over Time</h2>
-            {reports.length === 0 ? (
-              <p style={{ color: BRAND.textMuted }}>No completed weekly reports logged yet. Complete a weekly cycle to populate trends!</p>
+            {computedReports.length === 0 ? (
+              <p style={{ color: BRAND.textMuted }}>No active weekly data stored yet.</p>
             ) : (
               <div style={{ width: "100%", height: 350, marginTop: "20px" }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={[...reports].reverse()}>
+                  <LineChart data={[...computedReports].reverse()}>
                     <CartesianGrid strokeDasharray="3 3" stroke={BRAND.border} />
                     <XAxis dataKey="weekStartDate" stroke={BRAND.textMuted} />
                     <YAxis yAxisId="left" stroke={BRAND.accent} domain={[0, 100]} />
@@ -619,11 +632,11 @@ export default function App() {
           <div style={{ display: "grid", gridTemplateColumns: selectedHistoryReport ? "300px 1fr" : "1fr", gap: "20px" }}>
             <div style={{ backgroundColor: BRAND.cardBg, padding: "20px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
               <h3 style={{ margin: "0 0 16px 0", fontFamily: "'Playfair Display', serif" }}>Saved Reports</h3>
-              {reports.length === 0 ? (
-                <p style={{ fontSize: "14px", color: BRAND.textMuted }}>No saved historical reports.</p>
+              {computedReports.length === 0 ? (
+                <p style={{ fontSize: "14px", color: BRAND.textMuted }}>No active weekly data recorded yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {reports.map((r) => (
+                  {computedReports.map((r) => (
                     <button key={r.id} onClick={() => setSelectedHistoryReport(r)} style={{ padding: "12px", backgroundColor: selectedHistoryReport?.id === r.id ? BRAND.primary : BRAND.bg, color: selectedHistoryReport?.id === r.id ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, borderRadius: "8px", textAlign: "left", cursor: "pointer", fontWeight: "bold" }}>
                       Week of {r.weekStartDate} ({r.overallPercentage}%)
                     </button>
@@ -636,9 +649,6 @@ export default function App() {
               <div ref={reportPrintRef} style={{ backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                   <h3 style={{ margin: 0, fontFamily: "'Playfair Display', serif", color: BRAND.accent }}>Week of {selectedHistoryReport.weekStartDate} Report</h3>
-                  <button onClick={() => downloadReportPdf(selectedHistoryReport)} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.primary, color: BRAND.bg, border: "none", padding: "8px 14px", borderRadius: "6px", fontWeight: "bold", cursor: "pointer" }}>
-                    <FileDown size={14} /> Download PDF
-                  </button>
                 </div>
                 <p style={{ color: BRAND.textMuted, fontSize: "14px" }}>Completed: {selectedHistoryReport.totalCappedCompleted} / {selectedHistoryReport.totalTargetSum} Target Days ({selectedHistoryReport.overallPercentage}%)</p>
                 
@@ -647,19 +657,27 @@ export default function App() {
                     <tr style={{ borderBottom: `1px solid ${BRAND.border}`, color: BRAND.textMuted, fontSize: "12px" }}>
                       <th style={{ padding: "8px" }}>Domain</th>
                       <th style={{ padding: "8px" }}>Description</th>
-                      <th style={{ padding: "8px", textAlign: "center" }}>Completion</th>
+                      <th style={{ padding: "8px", textAlign: "center" }}>Week Completion</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedHistoryReport.habitsSnapshot.filter(h => h.targetDays).map((h) => (
-                      <tr key={h.id} style={{ borderBottom: `1px solid ${BRAND.border}`, fontSize: "14px" }}>
-                        <td style={{ padding: "8px", fontWeight: "bold" }}>{h.category}</td>
-                        <td style={{ padding: "8px" }}>{h.description || "-"}</td>
-                        <td style={{ padding: "8px", textAlign: "center", color: BRAND.accent }}>
-                          {h.days.filter(Boolean).length} / {h.targetDays} Days
-                        </td>
-                      </tr>
-                    ))}
+                    {habits.map((h) => {
+                      const [y, m, d] = selectedHistoryReport.weekStartDate.split("-").map(Number);
+                      const weekDays = Array.from({ length: 7 }).map((_, idx) => {
+                        const dt = new Date(y, m - 1, d + idx);
+                        return formatDateToISO(dt);
+                      });
+                      const count = weekDays.filter((dateStr) => h.completedDates?.[dateStr]).length;
+                      return (
+                        <tr key={h.id} style={{ borderBottom: `1px solid ${BRAND.border}`, fontSize: "14px" }}>
+                          <td style={{ padding: "8px", fontWeight: "bold" }}>{h.category}</td>
+                          <td style={{ padding: "8px" }}>{h.description || "-"}</td>
+                          <td style={{ padding: "8px", textAlign: "center", color: BRAND.accent }}>
+                            {count} / {h.targetDays || 0} Days
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -677,34 +695,6 @@ export default function App() {
                 <button onClick={() => generatePDFAndReset(true)} style={{ backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>Yes, Download PDF & Reset Form</button>
                 <button onClick={() => generatePDFAndReset(false)} style={{ backgroundColor: BRAND.bg, color: "#e57373", border: `1px solid ${BRAND.border}`, fontWeight: "bold", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>No, Just Reset Form</button>
                 <button onClick={() => setShowResetModal(false)} style={{ backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "10px", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* MANDATORY END-OF-WEEK REPORT MODAL */}
-        {pendingReport && (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13, 20, 18, 0.92)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }}>
-            <div style={{ backgroundColor: BRAND.cardBg, border: `1px solid ${BRAND.border}`, borderRadius: "12px", padding: "28px", maxWidth: "600px", width: "100%", color: BRAND.text }}>
-              <h2 style={{ fontFamily: "'Playfair Display', serif", color: BRAND.accent, marginTop: 0 }}>Weekly Report Ready!</h2>
-              <p style={{ color: BRAND.textMuted, fontSize: "14px" }}>
-                The tracking cycle for the week of <strong>{pendingReport.weekStartDate}</strong> has ended. Here is your summary:
-              </p>
-
-              <div style={{ backgroundColor: BRAND.bg, padding: "16px", borderRadius: "8px", border: `1px solid ${BRAND.border}`, margin: "16px 0" }}>
-                <div>Total Completed: <strong>{pendingReport.totalCappedCompleted} / {pendingReport.totalTargetSum} Target Days</strong></div>
-                <div style={{ fontSize: "20px", color: BRAND.accent, fontWeight: "bold", marginTop: "4px" }}>Overall Progress: {pendingReport.overallPercentage}%</div>
-              </div>
-
-              <p style={{ fontSize: "13px", color: BRAND.textMuted }}>Your results will automatically be stored in your <strong>Weekly History</strong> tab for trend tracking.</p>
-
-              <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-                <button onClick={() => finalizeReportAndStartNewWeek(true)} style={{ flex: 1, backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-                  <FileDown size={16} /> Download PDF & Start New Week
-                </button>
-                <button onClick={() => finalizeReportAndStartNewWeek(false)} style={{ backgroundColor: BRAND.bg, color: BRAND.text, border: `1px solid ${BRAND.border}`, padding: "12px 18px", borderRadius: "8px", cursor: "pointer" }}>
-                  Skip PDF & Start New Week
-                </button>
               </div>
             </div>
           </div>
