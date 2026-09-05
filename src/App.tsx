@@ -96,7 +96,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"tracker" | "trends" | "history">("tracker");
   const [startDayIndex, setStartDayIndex] = useState<number>(() => {
-    return Number(localStorage.getItem("tracker_startDayIndex")) || 0; // Default Sunday
+    return Number(localStorage.getItem("tracker_startDayIndex")) || 0;
   });
 
   const getTodayString = () => {
@@ -111,6 +111,7 @@ export default function App() {
     return localStorage.getItem("tracker_weekOf_v1") || getTodayString();
   });
 
+  // Sticky User Preference
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(() => {
     return localStorage.getItem("tracker_showActiveOnly_v1") === "true";
   });
@@ -147,7 +148,7 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sync state with LocalStorage/Firestore
+  // Sync state with LocalStorage/Firestore across devices
   useEffect(() => {
     if (user) {
       const userDocRef = doc(db, "users", user.uid);
@@ -156,7 +157,10 @@ export default function App() {
           const data = docSnap.data();
           if (data.habits) setHabits(data.habits);
           if (data.weekOf) setWeekOf(data.weekOf);
-          if (data.showActiveOnly !== undefined) setShowActiveOnly(data.showActiveOnly);
+          if (data.showActiveOnly !== undefined) {
+            setShowActiveOnly(data.showActiveOnly);
+            localStorage.setItem("tracker_showActiveOnly_v1", String(data.showActiveOnly));
+          }
           if (data.startDayIndex !== undefined) setStartDayIndex(data.startDayIndex);
           if (data.reports) setReports(data.reports);
         }
@@ -175,42 +179,18 @@ export default function App() {
     }
   }, [user]);
 
-  // Check if current week has elapsed and auto-generate report screen
-  useEffect(() => {
-    if (!weekOf) return;
-    const [year, month, day] = weekOf.split("-").map(Number);
-    const startDate = new Date(year, month - 1, day);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 7);
-
-    const today = new Date();
-    if (today >= endDate) {
-      const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
-      const totalCappedCompleted = habits.reduce((acc, h) => {
-        const completed = h.days.filter(Boolean).length;
-        if (!h.targetDays || h.targetDays === 0) return acc;
-        return acc + Math.min(completed, h.targetDays);
-      }, 0);
-      const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedCompleted / totalTargetSum) * 100) : 0;
-
-      const report: WeeklyReport = {
-        id: `report_${weekOf}`,
-        weekStartDate: weekOf,
-        habitsSnapshot: habits,
-        totalTargetSum,
-        totalCappedCompleted,
-        overallPercentage,
-        createdAt: new Date().toISOString(),
-      };
-
-      setPendingReport(report);
-    }
-  }, [weekOf, habits]);
-
-  const saveState = async (newHabits: Habit[], newWeekOf?: string, newReports?: WeeklyReport[], newStartDay?: number) => {
-    const updatedWeek = newWeekOf || weekOf;
-    const updatedReports = newReports || reports;
+  // Centralized State Persister
+  const saveState = async (
+    newHabits: Habit[],
+    newWeekOf?: string,
+    newReports?: WeeklyReport[],
+    newStartDay?: number,
+    newActiveOnly?: boolean
+  ) => {
+    const updatedWeek = newWeekOf !== undefined ? newWeekOf : weekOf;
+    const updatedReports = newReports !== undefined ? newReports : reports;
     const updatedStartDay = newStartDay !== undefined ? newStartDay : startDayIndex;
+    const updatedActiveOnly = newActiveOnly !== undefined ? newActiveOnly : showActiveOnly;
 
     setHabits(newHabits);
     setReports(updatedReports);
@@ -218,12 +198,17 @@ export default function App() {
     if (user) {
       try {
         const userDocRef = doc(db, "users", user.uid);
-        await setDoc(userDocRef, {
-          habits: newHabits,
-          weekOf: updatedWeek,
-          reports: updatedReports,
-          startDayIndex: updatedStartDay,
-        }, { merge: true });
+        await setDoc(
+          userDocRef,
+          {
+            habits: newHabits,
+            weekOf: updatedWeek,
+            reports: updatedReports,
+            startDayIndex: updatedStartDay,
+            showActiveOnly: updatedActiveOnly,
+          },
+          { merge: true }
+        );
       } catch (err) {
         console.error("Firestore sync error:", err);
       }
@@ -232,18 +217,21 @@ export default function App() {
       localStorage.setItem("tracker_weekOf_v1", updatedWeek);
       localStorage.setItem("tracker_reports_v1", JSON.stringify(updatedReports));
       localStorage.setItem("tracker_startDayIndex", String(updatedStartDay));
+      localStorage.setItem("tracker_showActiveOnly_v1", String(updatedActiveOnly));
     }
   };
 
   const handleStartDayChange = (index: number) => {
     setStartDayIndex(index);
-    saveState(habits, weekOf, reports, index);
+    saveState(habits, weekOf, reports, index, showActiveOnly);
   };
 
+  // Toggle button exclusively controls the preference
   const toggleShowActiveOnly = () => {
     const newValue = !showActiveOnly;
     setShowActiveOnly(newValue);
     localStorage.setItem("tracker_showActiveOnly_v1", String(newValue));
+    saveState(habits, weekOf, reports, startDayIndex, newValue);
   };
 
   const getDynamicDaysWithDates = () => {
@@ -389,7 +377,7 @@ export default function App() {
           id: Date.now(),
           category: title.trim(),
           description: "",
-          targetDays: 7, // Default target so it remains visible under Active Filter
+          targetDays: null,
           days: [false, false, false, false, false, false, false],
           isCustom: true,
         },
@@ -412,9 +400,14 @@ export default function App() {
     }
   };
 
-  // Fixed filtering condition: retains domains with typed text or target values
+  // Filter displaying habits cleanly based on explicitly set user options
   const displayedHabits = showActiveOnly
-    ? habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0)
+    ? habits.filter(
+        (h) =>
+          (h.targetDays !== null && h.targetDays > 0) ||
+          h.description.trim().length > 0 ||
+          h.days.some(Boolean)
+      )
     : habits;
 
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
@@ -506,7 +499,7 @@ export default function App() {
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
                 <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Active / Total Domains</div>
                 <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", marginTop: "4px" }}>
-                  {habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0).length} / {habits.length}
+                  {habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0 || h.days.some(Boolean)).length} / {habits.length}
                 </div>
               </div>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
