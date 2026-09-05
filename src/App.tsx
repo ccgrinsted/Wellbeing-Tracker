@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, Eye, EyeOff, RotateCcw, LogIn, LogOut } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import html2pdf from "html2pdf.js";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
 import { PWAInstallButton } from "./PWAInstallButton";
 
@@ -289,19 +290,20 @@ export default function App() {
   const generatePDFAndReset = async (shouldDownload: boolean) => {
     setShowResetModal(false);
 
-    if (shouldDownload) {
+    if (shouldDownload && printRef.current) {
       const element = printRef.current;
       const opt = {
         margin: [0.3, 0.3, 0.3, 0.3],
         filename: `Wellspring_Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: BRAND.bg },
         jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
       };
 
-      if ((window as any).html2pdf) {
-        await (window as any).html2pdf().set(opt).from(element).save();
-      } else {
+      try {
+        await html2pdf().set(opt).from(element).save();
+      } catch (err) {
+        console.error("PDF generation error, opening browser print dialog:", err);
         window.print();
       }
     }
