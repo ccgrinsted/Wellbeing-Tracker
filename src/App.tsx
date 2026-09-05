@@ -785,20 +785,11 @@ export default function App() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                justifyContent: "flex-end",
                 flexWrap: "wrap",
                 gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "12px", color: BRAND.textMuted }}>
-                  Week Starts On:{" "}
-                  <strong style={{ color: BRAND.accent }}>
-                    {DAYS_OF_WEEK[activeStartDay]}
-                  </strong>
-                </span>
-              </div>
-
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Select Date:</span>
                 <input
