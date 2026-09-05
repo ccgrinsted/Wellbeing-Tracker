@@ -18,8 +18,18 @@ const BRAND = {
 };
 
 const DEFAULT_CATEGORIES = [
-  "Physical", "Spiritual", "Mental", "Romantic", "Sexual", 
-  "Social", "Family", "Financial", "Professional", "Creativity", "Community"
+  "Physical & Energy",
+  "Nutrition & Recovery",
+  "Mental & Emotional",
+  "Spiritual & Purpose",
+  "Intellectual & Growth",
+  "Romantic & Intimacy",
+  "Social & Friendship",
+  "Family & Home",
+  "Financial",
+  "Professional & Career",
+  "Creativity & Expression",
+  "Community & Service",
 ];
 
 const BASE_DAYS = ["Sun", "Mon", "Tues", "Wed", "Thurs", "Fri", "Sat"];
