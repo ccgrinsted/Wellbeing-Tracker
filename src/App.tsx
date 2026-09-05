@@ -185,7 +185,6 @@ export default function App() {
 
     const today = new Date();
     if (today >= endDate) {
-      // Calculate final weekly tally
       const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
       const totalCappedCompleted = habits.reduce((acc, h) => {
         const completed = h.days.filter(Boolean).length;
@@ -239,6 +238,12 @@ export default function App() {
   const handleStartDayChange = (index: number) => {
     setStartDayIndex(index);
     saveState(habits, weekOf, reports, index);
+  };
+
+  const toggleShowActiveOnly = () => {
+    const newValue = !showActiveOnly;
+    setShowActiveOnly(newValue);
+    localStorage.setItem("tracker_showActiveOnly_v1", String(newValue));
   };
 
   const getDynamicDaysWithDates = () => {
@@ -339,7 +344,6 @@ export default function App() {
 
     const updatedReports = [pendingReport, ...reports.filter((r) => r.id !== pendingReport.id)];
 
-    // Calculate next week start date
     const [year, month, day] = weekOf.split("-").map(Number);
     const nextWeekDate = new Date(year, month - 1, day + 7);
     const yyyy = nextWeekDate.getFullYear();
@@ -385,7 +389,7 @@ export default function App() {
           id: Date.now(),
           category: title.trim(),
           description: "",
-          targetDays: null,
+          targetDays: 7, // Default target so it remains visible under Active Filter
           days: [false, false, false, false, false, false, false],
           isCustom: true,
         },
@@ -408,8 +412,9 @@ export default function App() {
     }
   };
 
+  // Fixed filtering condition: retains domains with typed text or target values
   const displayedHabits = showActiveOnly
-    ? habits.filter((h) => h.targetDays !== null && h.targetDays > 0)
+    ? habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0)
     : habits;
 
   const totalTargetSum = habits.reduce((acc, h) => acc + (h.targetDays || 0), 0);
@@ -480,7 +485,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Week of:</span>
                 <input type="date" value={weekOf} onChange={(e) => e.target.value && setWeekOf(e.target.value)} style={{ backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.text, padding: "6px 10px", borderRadius: "6px", outline: "none", fontSize: "12px" }} />
-                <button onClick={() => setShowActiveOnly(!showActiveOnly)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+                <button onClick={toggleShowActiveOnly} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
                   {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />} {showActiveOnly ? "Show All" : "Active Only"}
                 </button>
                 <button onClick={() => setShowResetModal(true)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: BRAND.bg, color: BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
@@ -501,7 +506,7 @@ export default function App() {
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
                 <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Active / Total Domains</div>
                 <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", marginTop: "4px" }}>
-                  {habits.filter((h) => h.targetDays !== null && h.targetDays > 0).length} / {habits.length}
+                  {habits.filter((h) => (h.targetDays !== null && h.targetDays > 0) || h.description.trim().length > 0).length} / {habits.length}
                 </div>
               </div>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
