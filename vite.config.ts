@@ -3,17 +3,20 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  build: {
-    // Defines external modules for the Rolldown bundler engine
-    rolldownOptions: {
-      external: ['fs', 'path', 'child_process', 'crypto'],
+  resolve: {
+    alias: {
+      fs: 'path',
+      path: 'path',
+      child_process: 'path',
+      crypto: 'path',
     },
-    // Fallback for standard Rollup environments
+  },
+  build: {
     rollupOptions: {
-      external: ['fs', 'path', 'child_process', 'crypto'],
+      external: [],
     },
   },
   optimizeDeps: {
-    include: ['html2pdf.js'],
+    include: ['react-is', 'recharts'],
   },
 });

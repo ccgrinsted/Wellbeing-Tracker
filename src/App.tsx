@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, Eye, EyeOff, RotateCcw, LogIn, LogOut, BarChart2, History, Settings, FileDown } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
-import html2pdf from "html2pdf.js";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
 import { PWAInstallButton } from "./PWAInstallButton";
@@ -115,6 +114,8 @@ export default function App() {
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(() => {
     return localStorage.getItem("tracker_showActiveOnly_v1") === "true";
   });
+
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const [reports, setReports] = useState<WeeklyReport[]>(() => {
     const saved = localStorage.getItem("tracker_reports_v1");
@@ -283,6 +284,39 @@ export default function App() {
     saveState(updated);
   };
 
+  const clearFormCheckmarks = () => {
+    const updated = habits.map((h) => ({
+      ...h,
+      days: [false, false, false, false, false, false, false],
+    }));
+    saveState(updated);
+  };
+
+  const generatePDFAndReset = async (shouldDownload: boolean) => {
+    setShowResetModal(false);
+
+    if (shouldDownload && printRef.current) {
+      const element = printRef.current;
+      const opt = {
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename: `Wellspring_Accountability_Tracker_Week_${weekOf || "Results"}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, backgroundColor: BRAND.bg },
+        jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
+      };
+
+      try {
+        const html2pdfModule = (await import("html2pdf.js")).default;
+        await html2pdfModule().set(opt).from(element).save();
+      } catch (err) {
+        console.error("PDF generation error, opening browser print dialog:", err);
+        window.print();
+      }
+    }
+
+    clearFormCheckmarks();
+  };
+
   const finalizeReportAndStartNewWeek = async (downloadPdf: boolean) => {
     if (!pendingReport) return;
 
@@ -296,7 +330,8 @@ export default function App() {
         jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
       };
       try {
-        await html2pdf().set(opt).from(element).save();
+        const html2pdfModule = (await import("html2pdf.js")).default;
+        await html2pdfModule().set(opt).from(element).save();
       } catch (e) {
         console.error(e);
       }
@@ -331,7 +366,46 @@ export default function App() {
       html2canvas: { scale: 2, backgroundColor: BRAND.bg },
       jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
     };
-    await html2pdf().set(opt).from(reportPrintRef.current).save();
+
+    try {
+      const html2pdfModule = (await import("html2pdf.js")).default;
+      await html2pdfModule().set(opt).from(reportPrintRef.current).save();
+    } catch (err) {
+      console.error("Error downloading PDF report:", err);
+      window.print();
+    }
+  };
+
+  const addCustomCategory = () => {
+    const title = prompt("Enter new custom domain name:");
+    if (title && title.trim() !== "") {
+      const updated: Habit[] = [
+        ...habits,
+        {
+          id: Date.now(),
+          category: title.trim(),
+          description: "",
+          targetDays: null,
+          days: [false, false, false, false, false, false, false],
+          isCustom: true,
+        },
+      ];
+      saveState(updated);
+    }
+  };
+
+  const removeCustomDomain = (id: number, categoryName: string) => {
+    if (confirm(`Are you sure you want to delete "${categoryName}"?`)) {
+      const updated = habits.filter((h) => h.id !== id);
+      saveState(updated);
+    }
+  };
+
+  const restoreDefaultDomains = () => {
+    if (confirm("Restore all default wellbeing domains?")) {
+      const fresh = createInitialHabits();
+      saveState(fresh);
+    }
   };
 
   const displayedHabits = showActiveOnly
@@ -363,9 +437,12 @@ export default function App() {
             
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               {user ? (
-                <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.bg, color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
-                  <LogOut size={14} /> Sign Out
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || "User"} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `1px solid ${BRAND.accent}` }} />}
+                  <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.bg, color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </div>
               ) : (
                 <button onClick={loginWithGoogle} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.primary, color: BRAND.bg, border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "12px" }}>
                   <LogIn size={14} /> Sign in with Google
@@ -400,11 +477,17 @@ export default function App() {
                 </select>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Week of:</span>
                 <input type="date" value={weekOf} onChange={(e) => e.target.value && setWeekOf(e.target.value)} style={{ backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.text, padding: "6px 10px", borderRadius: "6px", outline: "none", fontSize: "12px" }} />
                 <button onClick={() => setShowActiveOnly(!showActiveOnly)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
                   {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />} {showActiveOnly ? "Show All" : "Active Only"}
+                </button>
+                <button onClick={() => setShowResetModal(true)} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: BRAND.bg, color: BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+                  <RefreshCw size={14} color={BRAND.primary} /> Reset Week
+                </button>
+                <button onClick={restoreDefaultDomains} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+                  <RotateCcw size={14} /> Restore Defaults
                 </button>
               </div>
             </div>
@@ -413,7 +496,7 @@ export default function App() {
 
         {/* TAB 1: MAIN TRACKER */}
         {activeTab === "tracker" && (
-          <div ref={printRef}>
+          <div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "24px" }}>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
                 <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Active / Total Domains</div>
@@ -433,7 +516,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ overflowX: "auto", backgroundColor: BRAND.cardBg, borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
+            <div ref={printRef} style={{ overflowX: "auto", backgroundColor: BRAND.cardBg, borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "1000px" }}>
                 <thead>
                   <tr style={{ backgroundColor: BRAND.bg, borderBottom: `1px solid ${BRAND.border}`, fontSize: "12px", color: BRAND.textMuted }}>
@@ -447,6 +530,7 @@ export default function App() {
                       </th>
                     ))}
                     <th style={{ padding: "16px", textAlign: "center", width: "120px" }}>Result</th>
+                    <th style={{ padding: "16px", width: "40px" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -455,11 +539,14 @@ export default function App() {
                     const percentage = item.targetDays && item.targetDays > 0 ? Math.min(100, Math.round((completedDays / item.targetDays) * 100)) : 0;
                     return (
                       <tr key={item.id} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
-                        <td style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "15px" }}>{item.category}</td>
-                        <td style={{ padding: "16px" }}>
+                        <td style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "15px", verticalAlign: "top", paddingTop: "20px" }}>
+                          {item.category}
+                          {item.isCustom && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "10px", color: BRAND.primary, display: "block", marginTop: "2px" }}>(Custom)</span>}
+                        </td>
+                        <td style={{ padding: "16px", verticalAlign: "top" }}>
                           <AutoResizingTextarea placeholder="Describe practice..." value={item.description} onChange={(e) => handleDescriptionChange(item.id, e.target.value)} />
                         </td>
-                        <td style={{ padding: "16px", textAlign: "center" }}>
+                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
                           <select value={item.targetDays === null ? "" : item.targetDays} onChange={(e) => handleTargetChange(item.id, e.target.value)} style={{ backgroundColor: BRAND.inputBg, border: `1px solid ${BRAND.border}`, borderRadius: "6px", padding: "8px", color: BRAND.text, outline: "none" }}>
                             <option value="">-- Set --</option>
                             {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -468,13 +555,13 @@ export default function App() {
                           </select>
                         </td>
                         {item.days.map((checked, index) => (
-                          <td key={index} style={{ padding: "6px", textAlign: "center" }}>
+                          <td key={index} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px" }}>
                             <button onClick={() => toggleDay(item.id, index)} style={{ width: "40px", height: "40px", borderRadius: "8px", border: checked ? `1px solid ${BRAND.accent}` : `1px solid ${BRAND.border}`, backgroundColor: checked ? BRAND.primary : BRAND.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
                               <Check size={18} color={checked ? BRAND.bg : "transparent"} strokeWidth={3} />
                             </button>
                           </td>
                         ))}
-                        <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold" }}>
+                        <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold", verticalAlign: "top", paddingTop: "20px" }}>
                           {item.targetDays ? (
                             <div>
                               <span style={{ color: BRAND.accent }}>{completedDays}/{item.targetDays}</span>
@@ -482,11 +569,24 @@ export default function App() {
                             </div>
                           ) : <span style={{ fontSize: "12px", color: BRAND.textMuted }}>-</span>}
                         </td>
+                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
+                          {item.isCustom && (
+                            <button onClick={() => removeCustomDomain(item.id, item.category)} style={{ backgroundColor: "transparent", border: "none", color: "#e57373", cursor: "pointer" }}>
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <button onClick={addCustomCategory} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "600", border: "none", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px" }}>
+                <Plus size={16} /> Add Custom Domain
+              </button>
             </div>
           </div>
         )}
@@ -566,6 +666,21 @@ export default function App() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* MANUAL RESET MODAL POPUP */}
+        {showResetModal && (
+          <div onClick={() => setShowResetModal(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(13, 20, 18, 0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, backdropFilter: "blur(4px)" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: BRAND.cardBg, border: `1px solid ${BRAND.border}`, borderRadius: "12px", padding: "28px", width: "400px", maxWidth: "90%", color: BRAND.text }}>
+              <h3 style={{ margin: "0 0 12px 0", fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent }}>Reset Weekly Progress</h3>
+              <p style={{ fontSize: "14px", color: BRAND.textMuted, lineHeight: "1.5", margin: "0 0 20px 0" }}>Would you like to download a PDF summary of this week's results before resetting?</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <button onClick={() => generatePDFAndReset(true)} style={{ backgroundColor: BRAND.primary, color: BRAND.bg, fontWeight: "bold", border: "none", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>Yes, Download PDF & Reset Form</button>
+                <button onClick={() => generatePDFAndReset(false)} style={{ backgroundColor: BRAND.bg, color: "#e57373", border: `1px solid ${BRAND.border}`, fontWeight: "bold", padding: "12px", borderRadius: "8px", cursor: "pointer" }}>No, Just Reset Form</button>
+                <button onClick={() => setShowResetModal(false)} style={{ backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "10px", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
           </div>
         )}
 
