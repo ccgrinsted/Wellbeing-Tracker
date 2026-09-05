@@ -510,7 +510,22 @@ export default function App() {
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Select Date:</span>
-                <input type="date" value={selectedDate} onChange={(e) => e.target.value && handleDateChange(e.target.value)} style={{ backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.text, padding: "6px 10px", borderRadius: "6px", outline: "none", fontSize: "12px" }} />
+                <input 
+                  type="date" 
+                  value={selectedDate} 
+                  onChange={(e) => e.target.value && handleDateChange(e.target.value)} 
+                  style={{ 
+                    backgroundColor: BRAND.bg, 
+                    border: `1px solid ${BRAND.border}`, 
+                    color: BRAND.text, 
+                    colorScheme: "dark", 
+                    padding: "6px 10px", 
+                    borderRadius: "6px", 
+                    outline: "none", 
+                    fontSize: "12px",
+                    cursor: "pointer"
+                  }} 
+                />
                 <button onClick={toggleShowActiveOnly} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
                   {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />} {showActiveOnly ? "Show All" : "Active Only"}
                 </button>
