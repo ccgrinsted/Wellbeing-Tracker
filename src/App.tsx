@@ -520,7 +520,7 @@ export default function App() {
   const overallPercentage = totalTargetSum > 0 ? Math.round((totalCappedCompleted / totalTargetSum) * 100) : 0;
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: BRAND.bg, color: BRAND.text, padding: "24px", fontFamily: "'Montserrat', sans-serif" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: BRAND.bg, color: BRAND.text, padding: "24px 16px", fontFamily: "'Montserrat', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
       `}</style>
@@ -547,91 +547,309 @@ export default function App() {
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         
         {/* Header Navigation */}
-        <header style={{ display: "flex", flexDirection: "column", gap: "16px", backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}`, marginBottom: "24px" }}>
-          
-          {/* Header Bar with Logo Left, Title Center, Widgets Right */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "16px" }}>
+        <header
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+            backgroundColor: BRAND.cardBg,
+            padding: "20px 16px",
+            borderRadius: "12px",
+            border: `1px solid ${BRAND.border}`,
+            marginBottom: "24px",
+          }}
+        >
+          <style>{`
+            .header-top-bar {
+              display: flex;
+              flex-direction: column;
+              gap: 16px;
+              width: 100%;
+            }
+
+            .header-branding {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              width: 100%;
+            }
+
+            .header-title {
+              text-align: center;
+              font-size: 18px;
+            }
+
+            @media (min-width: 648px) {
+              .header-top-bar {
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                align-items: center;
+              }
+              .header-branding {
+                justify-content: flex-start;
+              }
+              .header-title {
+                font-size: 22px;
+                white-space: nowrap;
+              }
+            }
+          `}</style>
+
+          {/* Header Top Bar */}
+          <div className="header-top-bar">
             
-            {/* Left: Logomark Hyperlink */}
-            <div style={{ display: "flex", justifyContent: "flex-start", alignItems: "center" }}>
-              <a href="https://www.wellspring.coach" target="_blank" rel="noopener noreferrer" style={{ display: "inline-block" }}>
-                <img 
-                  src="/WellSpring Logo Horizontal - Color Light Knockout.png" 
-                  alt="Wellspring Logo" 
-                  style={{ height: "42px", width: "auto", display: "block" }} 
+            {/* Logomark & Mobile Top-Right Controls */}
+            <div className="header-branding">
+              <a
+                href="https://www.wellspring.coach"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "inline-block" }}
+              >
+                <img
+                  src="/WellSpring Logo Horizontal - Color Light Knockout.png"
+                  alt="Wellspring Logo"
+                  style={{
+                    height: "36px",
+                    width: "auto",
+                    maxWidth: "160px",
+                    objectFit: "contain",
+                    display: "block",
+                  }}
                 />
               </a>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <button
+                  onClick={() => {
+                    setTempStartDay(activeStartDay);
+                    setShowSettingsModal(true);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "50%",
+                    backgroundColor: BRAND.bg,
+                    border: `1px solid ${BRAND.border}`,
+                    color: BRAND.textMuted,
+                    cursor: "pointer",
+                  }}
+                  title="Settings"
+                >
+                  <Settings size={18} />
+                </button>
+                {user ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {user.photoURL && (
+                      <img
+                        src={user.photoURL}
+                        alt={user.displayName || "User"}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "50%",
+                          border: `1px solid ${BRAND.accent}`,
+                        }}
+                      />
+                    )}
+                    <button
+                      onClick={logout}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        backgroundColor: BRAND.bg,
+                        color: BRAND.textMuted,
+                        border: `1px solid ${BRAND.border}`,
+                        padding: "8px 10px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <LogOut size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={loginWithGoogle}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      backgroundColor: BRAND.primary,
+                      color: BRAND.bg,
+                      border: "none",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <LogIn size={14} /> Sign in
+                  </button>
+                )}
+              </div>
             </div>
 
-            {/* Center: Title */}
-            <div style={{ textAlign: "center" }}>
-              <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "22px", margin: 0, color: BRAND.text, whiteSpace: "nowrap" }}>
+            {/* Center Title */}
+            <div>
+              <h1
+                className="header-title"
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  margin: 0,
+                  color: BRAND.text,
+                }}
+              >
                 Wellbeing Accountability Tracker
               </h1>
             </div>
 
-            {/* Right: Settings & Auth */}
-            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px" }}>
-              <button onClick={() => { setTempStartDay(activeStartDay); setShowSettingsModal(true); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "50%", backgroundColor: BRAND.bg, border: `1px solid ${BRAND.border}`, color: BRAND.textMuted, cursor: "pointer" }} title="Settings">
-                <Settings size={18} />
-              </button>
-              {user ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {user.photoURL && <img src={user.photoURL} alt={user.displayName || "User"} style={{ width: "32px", height: "32px", borderRadius: "50%", border: `1px solid ${BRAND.accent}` }} />}
-                  <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.bg, color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
-                    <LogOut size={14} /> Sign Out
-                  </button>
-                </div>
-              ) : (
-                <button onClick={loginWithGoogle} style={{ display: "flex", alignItems: "center", gap: "6px", backgroundColor: BRAND.primary, color: BRAND.bg, border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontWeight: "bold", fontSize: "12px" }}>
-                  <LogIn size={14} /> Sign in with Google
-                </button>
-              )}
-            </div>
+            <div style={{ display: "none" }} />
           </div>
 
           {/* Navigation Tabs */}
-          <div style={{ display: "flex", gap: "8px", borderBottom: `1px solid ${BRAND.border}`, paddingBottom: "12px", flexWrap: "wrap" }}>
-            <button onClick={() => setActiveTab("tracker")} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === "tracker" ? BRAND.primary : "transparent", color: activeTab === "tracker" ? BRAND.bg : BRAND.text, fontWeight: "600", cursor: "pointer" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              borderBottom: `1px solid ${BRAND.border}`,
+              paddingBottom: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              onClick={() => setActiveTab("tracker")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                border: "none",
+                backgroundColor: activeTab === "tracker" ? BRAND.primary : "transparent",
+                color: activeTab === "tracker" ? BRAND.bg : BRAND.text,
+                fontWeight: "600",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
               <CalendarIcon size={16} /> Tracker
             </button>
-            <button onClick={() => setActiveTab("trends")} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === "trends" ? BRAND.primary : "transparent", color: activeTab === "trends" ? BRAND.bg : BRAND.text, fontWeight: "600", cursor: "pointer" }}>
+            <button
+              onClick={() => setActiveTab("trends")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                border: "none",
+                backgroundColor: activeTab === "trends" ? BRAND.primary : "transparent",
+                color: activeTab === "trends" ? BRAND.bg : BRAND.text,
+                fontWeight: "600",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
               <BarChart2 size={16} /> Trend Analytics
             </button>
-            <button onClick={() => setActiveTab("history")} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", borderRadius: "6px", border: "none", backgroundColor: activeTab === "history" ? BRAND.primary : "transparent", color: activeTab === "history" ? BRAND.bg : BRAND.text, fontWeight: "600", cursor: "pointer" }}>
+            <button
+              onClick={() => setActiveTab("history")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "6px",
+                border: "none",
+                backgroundColor: activeTab === "history" ? BRAND.primary : "transparent",
+                color: activeTab === "history" ? BRAND.bg : BRAND.text,
+                fontWeight: "600",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
               <History size={16} /> Weekly History ({computedReports.length})
             </button>
           </div>
 
           {/* Controls Bar */}
           {activeTab === "tracker" && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Week Starts On: <strong style={{ color: BRAND.accent }}>{DAYS_OF_WEEK[activeStartDay]}</strong></span>
+                <span style={{ fontSize: "12px", color: BRAND.textMuted }}>
+                  Week Starts On:{" "}
+                  <strong style={{ color: BRAND.accent }}>
+                    {DAYS_OF_WEEK[activeStartDay]}
+                  </strong>
+                </span>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Select Date:</span>
-                <input 
-                  type="date" 
-                  value={selectedDate} 
-                  onChange={(e) => e.target.value && handleDateChange(e.target.value)} 
-                  style={{ 
-                    backgroundColor: BRAND.bg, 
-                    border: `1px solid ${BRAND.border}`, 
-                    color: BRAND.text, 
-                    colorScheme: "dark", 
-                    padding: "6px 10px", 
-                    borderRadius: "6px", 
-                    outline: "none", 
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => e.target.value && handleDateChange(e.target.value)}
+                  style={{
+                    backgroundColor: BRAND.bg,
+                    border: `1px solid ${BRAND.border}`,
+                    color: BRAND.text,
+                    colorScheme: "dark",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    outline: "none",
                     fontSize: "12px",
-                    cursor: "pointer"
-                  }} 
+                    cursor: "pointer",
+                  }}
                 />
-                <button onClick={toggleShowActiveOnly} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg, color: showActiveOnly ? BRAND.bg : BRAND.text, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
-                  {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />} {showActiveOnly ? "Show All" : "Active Only"}
+                <button
+                  onClick={toggleShowActiveOnly}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "12px",
+                    backgroundColor: showActiveOnly ? BRAND.primary : BRAND.bg,
+                    color: showActiveOnly ? BRAND.bg : BRAND.text,
+                    border: `1px solid ${BRAND.border}`,
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showActiveOnly ? <EyeOff size={14} /> : <Eye size={14} />}
+                  {showActiveOnly ? "Show All" : "Active Only"}
                 </button>
-                <button onClick={restoreDefaultDomains} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", backgroundColor: "transparent", color: BRAND.textMuted, border: `1px solid ${BRAND.border}`, padding: "6px 12px", borderRadius: "6px", cursor: "pointer" }}>
+                <button
+                  onClick={restoreDefaultDomains}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    fontSize: "12px",
+                    backgroundColor: "transparent",
+                    color: BRAND.textMuted,
+                    border: `1px solid ${BRAND.border}`,
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
                   <RotateCcw size={14} /> Restore Defaults
                 </button>
               </div>
