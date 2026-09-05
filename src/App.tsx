@@ -3,6 +3,7 @@ import { Plus, Trash2, Calendar as CalendarIcon, Check, RefreshCw, Eye, EyeOff, 
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { auth, db, loginWithGoogle, logout } from "./firebase";
+import { PWAInstallButton } from "./PWAInstallButton";
 
 // Brand Design Tokens
 const BRAND = {
@@ -319,6 +320,9 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
       `}</style>
+
+      {/* Mobile PWA Installation Banner */}
+      <PWAInstallButton />
 
       <div style={{ maxWidth: "1200px", margin: "0 auto" }} ref={printRef}>
         
