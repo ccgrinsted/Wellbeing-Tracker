@@ -126,6 +126,7 @@ export default function App() {
 
   const activeStartDay = startDayIndex ?? 0;
   const weekOf = calculateWeekStartDate(selectedDate, activeStartDay);
+  const currentRealWeekOf = calculateWeekStartDate(formatDateToISO(new Date()), activeStartDay);
 
   const [showActiveOnly, setShowActiveOnly] = useState<boolean>(() => {
     return localStorage.getItem("tracker_showActiveOnly_v1") === "true";
@@ -186,6 +187,43 @@ export default function App() {
       }
     }
   }, [user]);
+
+  // Inherit practices/targets from the most recent prior week if current target week has no entries
+  useEffect(() => {
+    if (!habits.length) return;
+
+    let needsUpdate = false;
+    const updatedHabits = habits.map((h) => {
+      if (h.weekData?.[weekOf]) return h;
+
+      const pastWeeks = Object.keys(h.weekData || {})
+        .filter((w) => w < weekOf)
+        .sort((a, b) => b.localeCompare(a));
+
+      if (pastWeeks.length > 0) {
+        const lastWeek = pastWeeks[0];
+        const lastData = h.weekData[lastWeek];
+        if (lastData && (lastData.description || lastData.targetDays !== null)) {
+          needsUpdate = true;
+          return {
+            ...h,
+            weekData: {
+              ...(h.weekData || {}),
+              [weekOf]: {
+                description: lastData.description || "",
+                targetDays: lastData.targetDays,
+              },
+            },
+          };
+        }
+      }
+      return h;
+    });
+
+    if (needsUpdate) {
+      saveState(updatedHabits);
+    }
+  }, [weekOf, habits]);
 
   const saveState = async (
     newHabits: Habit[],
@@ -262,14 +300,13 @@ export default function App() {
 
     habits.forEach((h) => {
       Object.keys(h.completedDates || {}).forEach((d) => {
-        weekSet.add(calculateWeekStartDate(d, activeStartDay));
+        const wStart = calculateWeekStartDate(d, activeStartDay);
+        if (wStart < currentRealWeekOf) weekSet.add(wStart);
       });
       Object.keys(h.weekData || {}).forEach((wStart) => {
-        weekSet.add(wStart);
+        if (wStart < currentRealWeekOf) weekSet.add(wStart);
       });
     });
-
-    weekSet.add(weekOf);
 
     return Array.from(weekSet)
       .sort((a, b) => b.localeCompare(a))
@@ -646,7 +683,7 @@ export default function App() {
           <div style={{ backgroundColor: BRAND.cardBg, padding: "24px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "20px", color: BRAND.accent, marginTop: 0 }}>Progress Trends Over Time</h2>
             {computedReports.length === 0 ? (
-              <p style={{ color: BRAND.textMuted }}>No active weekly data stored yet.</p>
+              <p style={{ color: BRAND.textMuted }}>No completed past weeks recorded yet.</p>
             ) : (
               <div style={{ width: "100%", height: 380, marginTop: "20px" }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -670,9 +707,9 @@ export default function App() {
         {activeTab === "history" && (
           <div style={{ display: "grid", gridTemplateColumns: selectedHistoryReport ? "300px 1fr" : "1fr", gap: "20px" }}>
             <div style={{ backgroundColor: BRAND.cardBg, padding: "20px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
-              <h3 style={{ margin: "0 0 16px 0", fontFamily: "'Playfair Display', serif" }}>Saved Reports</h3>
+              <h3 style={{ margin: "0 0 16px 0", fontFamily: "'Playfair Display', serif" }}>Past Completed Reports</h3>
               {computedReports.length === 0 ? (
-                <p style={{ fontSize: "14px", color: BRAND.textMuted }}>No active weekly data recorded yet.</p>
+                <p style={{ fontSize: "14px", color: BRAND.textMuted }}>No completed past weeks recorded yet.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {computedReports.map((r) => (
