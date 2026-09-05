@@ -1,0 +1,23 @@
+{
+    "name": "Wellbeing Accountability Tracker",
+    "short_name": "Wellbeing Tracker",
+    "description": "Wellbeing Accountability Tracker by Wellspring Coaching & Transformation",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0d1412",
+    "theme_color": "#0d1412",
+    "icons": [
+      {
+        "src": "/favicon.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any maskable"
+      },
+      {
+        "src": "/favicon.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any maskable"
+      }
+    ]
+  }
