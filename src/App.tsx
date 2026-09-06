@@ -551,6 +551,29 @@ export default function App() {
           border-bottom: 1px solid ${BRAND.border};
         }
 
+        /* Responsive Header Row Rules */
+        .header-top-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+
+        .header-nav-container {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          width: 100%;
+        }
+
+        @media (min-width: 641px), (min-width: 568px) and (orientation: landscape) {
+          .header-nav-container {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+          }
+        }
+
         /* Desktop & Landscape Horizontal Locking */
         @media (min-width: 641px) {
           .sticky-col-th {
@@ -617,238 +640,191 @@ export default function App() {
             marginBottom: "24px",
           }}
         >
-          <style>{`
-            .header-top-bar {
-              display: flex;
-              flex-direction: column;
-              gap: 16px;
-              width: 100%;
-            }
+          {/* Header Top Row: Logo Left, Settings & Auth Right */}
+          <div className="header-top-row">
+            <a
+              href="https://www.wellspring.coach"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "inline-block" }}
+            >
+              <img
+                src="/WellSpring Logo Horizontal - Color Light Knockout.png"
+                alt="Wellspring Logo"
+                style={{
+                  height: "36px",
+                  width: "auto",
+                  maxWidth: "160px",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+            </a>
 
-            .header-branding {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              width: 100%;
-            }
+            <h1
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                margin: 0,
+                color: BRAND.text,
+                fontSize: "20px",
+                display: "none",
+              }}
+            >
+              Wellbeing Accountability Tracker
+            </h1>
 
-            .header-title {
-              text-align: center;
-              font-size: 18px;
-            }
-
-            @media (min-width: 648px) {
-              .header-top-bar {
-                display: grid;
-                grid-template-columns: 1fr auto 1fr;
-                align-items: center;
-              }
-              .header-branding {
-                justify-content: flex-start;
-              }
-              .header-title {
-                font-size: 22px;
-                white-space: nowrap;
-              }
-            }
-          `}</style>
-
-          {/* Header Top Bar */}
-          <div className="header-top-bar">
-            
-            {/* Logomark & Mobile Top-Right Controls */}
-            <div className="header-branding">
-              <a
-                href="https://www.wellspring.coach"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "inline-block" }}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginLeft: "auto" }}>
+              <button
+                onClick={() => {
+                  setTempStartDay(activeStartDay);
+                  setShowSettingsModal(true);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  backgroundColor: BRAND.bg,
+                  border: `1px solid ${BRAND.border}`,
+                  color: BRAND.textMuted,
+                  cursor: "pointer",
+                }}
+                title="Settings"
               >
-                <img
-                  src="/WellSpring Logo Horizontal - Color Light Knockout.png"
-                  alt="Wellspring Logo"
-                  style={{
-                    height: "36px",
-                    width: "auto",
-                    maxWidth: "160px",
-                    objectFit: "contain",
-                    display: "block",
-                  }}
-                />
-              </a>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <button
-                  onClick={() => {
-                    setTempStartDay(activeStartDay);
-                    setShowSettingsModal(true);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "50%",
-                    backgroundColor: BRAND.bg,
-                    border: `1px solid ${BRAND.border}`,
-                    color: BRAND.textMuted,
-                    cursor: "pointer",
-                  }}
-                  title="Settings"
-                >
-                  <Settings size={18} />
-                </button>
-                {user ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    {user.photoURL && (
-                      <img
-                        src={user.photoURL}
-                        alt={user.displayName || "User"}
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          border: `1px solid ${BRAND.accent}`,
-                        }}
-                      />
-                    )}
-                    <button
-                      onClick={logout}
+                <Settings size={18} />
+              </button>
+              {user ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {user.photoURL && (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || "User"}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        backgroundColor: BRAND.bg,
-                        color: BRAND.textMuted,
-                        border: `1px solid ${BRAND.border}`,
-                        padding: "8px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "12px",
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        border: `1px solid ${BRAND.accent}`,
                       }}
-                    >
-                      <LogOut size={14} />
-                    </button>
-                  </div>
-                ) : (
+                    />
+                  )}
                   <button
-                    onClick={loginWithGoogle}
+                    onClick={logout}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
-                      backgroundColor: BRAND.primary,
-                      color: BRAND.bg,
-                      border: "none",
-                      padding: "8px 12px",
+                      backgroundColor: BRAND.bg,
+                      color: BRAND.textMuted,
+                      border: `1px solid ${BRAND.border}`,
+                      padding: "8px 10px",
                       borderRadius: "6px",
                       cursor: "pointer",
-                      fontWeight: "bold",
                       fontSize: "12px",
                     }}
                   >
-                    <LogIn size={14} /> Sign in
+                    <LogOut size={14} />
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <button
+                  onClick={loginWithGoogle}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    backgroundColor: BRAND.primary,
+                    color: BRAND.bg,
+                    border: "none",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    fontSize: "12px",
+                  }}
+                >
+                  <LogIn size={14} /> Sign in
+                </button>
+              )}
             </div>
-
-            {/* Center Title */}
-            <div>
-              <h1
-                className="header-title"
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  margin: 0,
-                  color: BRAND.text,
-                }}
-              >
-                Wellbeing Accountability Tracker
-              </h1>
-            </div>
-
-            <div style={{ display: "none" }} />
           </div>
 
-          {/* Navigation Tabs */}
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              borderBottom: `1px solid ${BRAND.border}`,
-              paddingBottom: "12px",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              onClick={() => setActiveTab("tracker")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 14px",
-                borderRadius: "6px",
-                border: "none",
-                backgroundColor: activeTab === "tracker" ? BRAND.primary : "transparent",
-                color: activeTab === "tracker" ? BRAND.bg : BRAND.text,
-                fontWeight: "600",
-                cursor: "pointer",
-                fontSize: "13px",
-              }}
-            >
-              <CalendarIcon size={16} /> Tracker
-            </button>
-            <button
-              onClick={() => setActiveTab("trends")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 14px",
-                borderRadius: "6px",
-                border: "none",
-                backgroundColor: activeTab === "trends" ? BRAND.primary : "transparent",
-                color: activeTab === "trends" ? BRAND.bg : BRAND.text,
-                fontWeight: "600",
-                cursor: "pointer",
-                fontSize: "13px",
-              }}
-            >
-              <BarChart2 size={16} /> Trend Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab("history")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "8px 14px",
-                borderRadius: "6px",
-                border: "none",
-                backgroundColor: activeTab === "history" ? BRAND.primary : "transparent",
-                color: activeTab === "history" ? BRAND.bg : BRAND.text,
-                fontWeight: "600",
-                cursor: "pointer",
-                fontSize: "13px",
-              }}
-            >
-              <History size={16} /> Weekly History ({computedReports.length})
-            </button>
-          </div>
-
-          {/* Controls Bar */}
-          {activeTab === "tracker" && (
+          {/* Combined Navigation Tabs & Inline Controls Bar */}
+          <div className="header-nav-container">
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
+                gap: "8px",
                 flexWrap: "wrap",
-                gap: "12px",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                onClick={() => setActiveTab("tracker")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: activeTab === "tracker" ? BRAND.primary : "transparent",
+                  color: activeTab === "tracker" ? BRAND.bg : BRAND.text,
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                <CalendarIcon size={16} /> Tracker
+              </button>
+              <button
+                onClick={() => setActiveTab("trends")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: activeTab === "trends" ? BRAND.primary : "transparent",
+                  color: activeTab === "trends" ? BRAND.bg : BRAND.text,
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                <BarChart2 size={16} /> Trends
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: activeTab === "history" ? BRAND.primary : "transparent",
+                  color: activeTab === "history" ? BRAND.bg : BRAND.text,
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                <History size={16} /> History ({computedReports.length})
+              </button>
+            </div>
+
+            {/* Tracker Actions Inline with Navigation Tabs */}
+            {activeTab === "tracker" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
                 <span style={{ fontSize: "12px", color: BRAND.textMuted }}>Select Date:</span>
                 <input
                   type="date"
@@ -902,8 +878,8 @@ export default function App() {
                   <RotateCcw size={14} /> Restore Defaults
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* TAB 1: MAIN TRACKER */}
