@@ -18,20 +18,22 @@ const BRAND = {
   inputBg: "rgba(13, 20, 18, 0.7)",
 };
 
-const DEFAULT_CATEGORIES = [
-  "Physical & Energy",
-  "Nutrition & Recovery",
-  "Mental & Emotional",
-  "Spiritual & Purpose",
-  "Intellectual & Growth",
-  "Romantic & Intimacy",
-  "Social & Friendship",
-  "Family & Home",
-  "Financial",
-  "Professional & Career",
-  "Creativity & Expression",
-  "Community & Service",
+const DEFAULT_CATEGORIES_WITH_DESCRIPTIONS: { category: string; description: string }[] = [
+  { category: "Physical & Energy", description: "Daily movement, exercise routines, energy management, and physical health practices." },
+  { category: "Nutrition & Recovery", description: "Diet, hydration, sleep quality, rest, and physical recovery routines." },
+  { category: "Mental & Emotional", description: "Mindfulness, stress management, emotional processing, and mental clarity habits." },
+  { category: "Spiritual & Purpose", description: "Connection to inner purpose, meditation, gratitude, and alignment with core values." },
+  { category: "Intellectual & Growth", description: "Continuous learning, reading, skill development, and personal development goals." },
+  { category: "Romantic & Intimacy", description: "Quality time, communication, and deepening intimacy within your primary relationship." },
+  { category: "Social & Friendship", description: "Maintaining connections, building meaningful relationships, and spending time with friends." },
+  { category: "Family & Home", description: "Family presence, nurturing home life, and maintaining physical living space." },
+  { category: "Financial", description: "Money management, budgeting practices, tracking investments, and financial planning." },
+  { category: "Professional & Career", description: "Work goals, project milestones, professional focus, and strategic growth." },
+  { category: "Creativity & Expression", description: "Engaging in creative outlets, artistic hobbies, writing, and self-expression." },
+  { category: "Community & Service", description: "Giving back, volunteering, civic involvement, and supporting local communities." },
 ];
+
+const DEFAULT_CATEGORIES = DEFAULT_CATEGORIES_WITH_DESCRIPTIONS.map((item) => item.category);
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -500,6 +502,14 @@ export default function App() {
     }
   };
 
+  const getPlaceholderText = (item: Habit): string => {
+    if (item.isCustom) {
+      return "Describe practice for this week...";
+    }
+    const match = DEFAULT_CATEGORIES_WITH_DESCRIPTIONS.find((d) => d.category === item.category);
+    return match ? match.description : "Describe practice for this week...";
+  };
+
   const displayedHabits = showActiveOnly
     ? habits.filter((h) => {
         const weekInfo = h.weekData?.[weekOf];
@@ -902,7 +912,7 @@ export default function App() {
                           {item.isCustom && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "10px", color: BRAND.primary, display: "block", marginTop: "2px" }}>(Custom)</span>}
                         </td>
                         <td style={{ padding: "16px", verticalAlign: "top" }}>
-                          <AutoResizingTextarea placeholder="Describe practice for this week..." value={weekInfo.description} onChange={(e) => handleDescriptionChange(item.id, e.target.value)} />
+                          <AutoResizingTextarea placeholder={getPlaceholderText(item)} value={weekInfo.description} onChange={(e) => handleDescriptionChange(item.id, e.target.value)} />
                         </td>
                         <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
                           <select value={weekInfo.targetDays === null ? "" : weekInfo.targetDays} onChange={(e) => handleTargetChange(item.id, e.target.value)} style={{ backgroundColor: BRAND.inputBg, border: `1px solid ${BRAND.border}`, borderRadius: "6px", padding: "8px", color: BRAND.text, outline: "none" }}>
