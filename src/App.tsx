@@ -533,6 +533,54 @@ export default function App() {
     <div style={{ minHeight: "100vh", backgroundColor: BRAND.bg, color: BRAND.text, padding: "24px 16px", fontFamily: "'Montserrat', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+        /* Dynamic Sticky Layout Styling */
+        .sticky-table-container {
+          max-height: 70vh;
+          overflow: auto;
+          background-color: ${BRAND.cardBg};
+          border-radius: 12px;
+          border: 1px solid ${BRAND.border};
+        }
+
+        .sticky-header-th {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background-color: ${BRAND.bg};
+          border-bottom: 1px solid ${BRAND.border};
+        }
+
+        /* Desktop & Landscape Horizontal Locking */
+        @media (min-width: 641px) {
+          .sticky-col-th {
+            position: sticky;
+            left: 0;
+            top: 0;
+            z-index: 20 !important;
+            background-color: ${BRAND.bg};
+          }
+          .sticky-col-td {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background-color: ${BRAND.cardBg};
+          }
+        }
+
+        /* Mobile Portrait Un-stick Column for Fluid Pan */
+        @media (max-width: 640px) {
+          .sticky-col-th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: ${BRAND.bg};
+          }
+          .sticky-col-td {
+            position: static;
+            background-color: transparent;
+          }
+        }
       `}</style>
 
       <PWAInstallButton />
@@ -883,21 +931,21 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ overflowX: "auto", backgroundColor: BRAND.cardBg, borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: "1000px" }}>
+            <div className="sticky-table-container">
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, textAlign: "left", minWidth: "1000px" }}>
                 <thead>
-                  <tr style={{ backgroundColor: BRAND.bg, borderBottom: `1px solid ${BRAND.border}`, fontSize: "12px", color: BRAND.textMuted }}>
-                    <th style={{ padding: "16px", width: "160px", fontFamily: "'Playfair Display', serif", fontSize: "14px", color: BRAND.text }}>Domain</th>
-                    <th style={{ padding: "16px", width: "360px" }}>Practice / Habit</th>
-                    <th style={{ padding: "16px", width: "130px", textAlign: "center" }}>Target</th>
+                  <tr style={{ fontSize: "12px", color: BRAND.textMuted }}>
+                    <th className="sticky-header-th sticky-col-th" style={{ padding: "16px", width: "160px", fontFamily: "'Playfair Display', serif", fontSize: "14px", color: BRAND.text }}>Domain</th>
+                    <th className="sticky-header-th" style={{ padding: "16px", width: "360px" }}>Practice / Habit</th>
+                    <th className="sticky-header-th" style={{ padding: "16px", width: "130px", textAlign: "center" }}>Target</th>
                     {activeDaysWithDates.map((item) => (
-                      <th key={item.isoDateStr} style={{ padding: "12px 6px", textAlign: "center", width: "60px" }}>
+                      <th key={item.isoDateStr} className="sticky-header-th" style={{ padding: "12px 6px", textAlign: "center", width: "60px" }}>
                         <div>{item.name}</div>
                         {item.dateStr && <div style={{ fontSize: "11px", color: BRAND.accent }}>{item.dateStr}</div>}
                       </th>
                     ))}
-                    <th style={{ padding: "16px", textAlign: "center", width: "120px" }}>Result</th>
-                    <th style={{ padding: "16px", width: "40px" }}></th>
+                    <th className="sticky-header-th" style={{ padding: "16px", textAlign: "center", width: "120px" }}>Result</th>
+                    <th className="sticky-header-th" style={{ padding: "16px", width: "40px" }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -907,14 +955,14 @@ export default function App() {
                     const percentage = weekInfo.targetDays && weekInfo.targetDays > 0 ? Math.min(100, Math.round((completedDaysCount / weekInfo.targetDays) * 100)) : 0;
                     return (
                       <tr key={item.id} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
-                        <td style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "15px", verticalAlign: "top", paddingTop: "20px" }}>
+                        <td className="sticky-col-td" style={{ padding: "16px", fontFamily: "'Playfair Display', serif", fontSize: "15px", verticalAlign: "top", paddingTop: "20px", borderBottom: `1px solid ${BRAND.border}` }}>
                           {item.category}
                           {item.isCustom && <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: "10px", color: BRAND.primary, display: "block", marginTop: "2px" }}>(Custom)</span>}
                         </td>
-                        <td style={{ padding: "16px", verticalAlign: "top" }}>
+                        <td style={{ padding: "16px", verticalAlign: "top", borderBottom: `1px solid ${BRAND.border}` }}>
                           <AutoResizingTextarea placeholder={getPlaceholderText(item)} value={weekInfo.description} onChange={(e) => handleDescriptionChange(item.id, e.target.value)} />
                         </td>
-                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
+                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px", borderBottom: `1px solid ${BRAND.border}` }}>
                           <select value={weekInfo.targetDays === null ? "" : weekInfo.targetDays} onChange={(e) => handleTargetChange(item.id, e.target.value)} style={{ backgroundColor: BRAND.inputBg, border: `1px solid ${BRAND.border}`, borderRadius: "6px", padding: "8px", color: BRAND.text, outline: "none" }}>
                             <option value="">-- Set --</option>
                             {[1, 2, 3, 4, 5, 6, 7].map((num) => (
@@ -925,14 +973,14 @@ export default function App() {
                         {activeDaysWithDates.map((dayInfo) => {
                           const isChecked = !!item.completedDates?.[dayInfo.isoDateStr];
                           return (
-                            <td key={dayInfo.isoDateStr} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px" }}>
+                            <td key={dayInfo.isoDateStr} style={{ padding: "6px", textAlign: "center", verticalAlign: "top", paddingTop: "16px", borderBottom: `1px solid ${BRAND.border}` }}>
                               <button onClick={() => toggleDayByDate(item.id, dayInfo.isoDateStr)} style={{ width: "40px", height: "40px", borderRadius: "8px", border: isChecked ? `1px solid ${BRAND.accent}` : `1px solid ${BRAND.border}`, backgroundColor: isChecked ? BRAND.primary : BRAND.inputBg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
                                 <Check size={18} color={isChecked ? BRAND.bg : "transparent"} strokeWidth={3} />
                               </button>
                             </td>
                           );
                         })}
-                        <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold", verticalAlign: "top", paddingTop: "20px" }}>
+                        <td style={{ padding: "16px", textAlign: "center", fontWeight: "bold", verticalAlign: "top", paddingTop: "20px", borderBottom: `1px solid ${BRAND.border}` }}>
                           {weekInfo.targetDays ? (
                             <div>
                               <span style={{ color: BRAND.accent }}>{completedDaysCount}/{weekInfo.targetDays}</span>
@@ -940,7 +988,7 @@ export default function App() {
                             </div>
                           ) : <span style={{ fontSize: "12px", color: BRAND.textMuted }}>-</span>}
                         </td>
-                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px" }}>
+                        <td style={{ padding: "16px", textAlign: "center", verticalAlign: "top", paddingTop: "20px", borderBottom: `1px solid ${BRAND.border}` }}>
                           {item.isCustom && (
                             <button onClick={() => removeCustomDomain(item.id, item.category)} style={{ backgroundColor: "transparent", border: "none", color: "#e57373", cursor: "pointer" }}>
                               <Trash2 size={16} />
