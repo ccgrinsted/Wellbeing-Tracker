@@ -896,9 +896,9 @@ export default function App() {
                 </div>
               </div>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
-                <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Total Days Completed</div>
+                <div style={{ fontSize: "12px", color: BRAND.textMuted }}>Total Practices Completed</div>
                 <div style={{ fontSize: "24px", fontFamily: "'Playfair Display', serif", fontWeight: "600", color: BRAND.primary, marginTop: "4px" }}>
-                  {totalCappedCompleted} / {totalTargetSum} Days
+                  {totalCappedCompleted} / {totalTargetSum} Practices
                 </div>
               </div>
               <div style={{ backgroundColor: BRAND.cardBg, padding: "18px", borderRadius: "12px", border: `1px solid ${BRAND.border}` }}>
