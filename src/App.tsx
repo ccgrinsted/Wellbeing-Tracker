@@ -1104,25 +1104,31 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {habits.map((h) => {
-                        const wStart = selectedHistoryReport.weekStartDate;
-                        const weekInfo = h.weekData?.[wStart] || { description: "", targetDays: null };
-                        const [y, m, d] = wStart.split("-").map(Number);
-                        const weekDays = Array.from({ length: 7 }).map((_, idx) => {
-                          const dt = new Date(y, m - 1, d + idx);
-                          return formatDateToISO(dt);
-                        });
-                        const count = weekDays.filter((dateStr) => h.completedDates?.[dateStr]).length;
-                        return (
-                          <tr key={h.id} style={{ borderBottom: `1px solid ${BRAND.border}`, fontSize: "14px" }}>
-                            <td style={{ padding: "8px", fontWeight: "bold" }}>{h.category}</td>
-                            <td style={{ padding: "8px" }}>{weekInfo.description || "-"}</td>
-                            <td style={{ padding: "8px", textAlign: "center", color: BRAND.accent }}>
-                              {count} / {weekInfo.targetDays || 0} Days
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {habits
+                        .filter((h) => {
+                          const wStart = selectedHistoryReport.weekStartDate;
+                          const target = h.weekData?.[wStart]?.targetDays;
+                          return target !== null && target !== undefined && target > 0;
+                        })
+                        .map((h) => {
+                          const wStart = selectedHistoryReport.weekStartDate;
+                          const weekInfo = h.weekData?.[wStart] || { description: "", targetDays: null };
+                          const [y, m, d] = wStart.split("-").map(Number);
+                          const weekDays = Array.from({ length: 7 }).map((_, idx) => {
+                            const dt = new Date(y, m - 1, d + idx);
+                            return formatDateToISO(dt);
+                          });
+                          const count = weekDays.filter((dateStr) => h.completedDates?.[dateStr]).length;
+                          return (
+                            <tr key={h.id} style={{ borderBottom: `1px solid ${BRAND.border}`, fontSize: "14px" }}>
+                              <td style={{ padding: "8px", fontWeight: "bold" }}>{h.category}</td>
+                              <td style={{ padding: "8px" }}>{weekInfo.description || "-"}</td>
+                              <td style={{ padding: "8px", textAlign: "center", color: BRAND.accent }}>
+                                {count} / {weekInfo.targetDays || 0} Days
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
